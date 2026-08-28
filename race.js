@@ -38,7 +38,24 @@ function newRaceState() {
     // got there first, which breaks a photo finish.
     arrival: { S: 0, D: 0, C: 0, H: 0 },
     tick: 0,
+    // Suits that can still win. A rider who folds leaves the pot but their King keeps
+    // racing: it still clears rows for the bonus cards, it just can't end the race any
+    // more. The race runs on until a King someone still has money on gets home.
+    contenders: [...SUITS],
   };
+}
+
+// Two cards per seat, dealt off the top and never drawn again. That is the private
+// information the whole betting game hangs on: every hole card is one advance its suit
+// will never get, and only its holder knows it is gone.
+function dealHoles(state, seats) {
+  return Array.from({ length: seats }, () => state.mainDeck.splice(0, 2));
+}
+
+// Best-placed first: furthest up the board, earliest arrival breaks the tie.
+function rankSuits(state, suits = SUITS) {
+  return [...suits].sort((a, b) =>
+    state.kingPos[a] - state.kingPos[b] || state.arrival[a] - state.arrival[b]);
 }
 
 function place(state, suit, row) {
@@ -51,9 +68,12 @@ function advance(state, suit, ev) {
   place(state, suit, state.kingPos[suit] - 1);
   ev.push({ type: 'advance', suit, row: state.kingPos[suit] });
   if (state.kingPos[suit] === 0) {
-    state.winner = suit;
-    ev.push({ type: 'win', suit });
-    return;
+    if (state.contenders.includes(suit)) {
+      state.winner = suit;
+      ev.push({ type: 'win', suit });
+      return;
+    }
+    ev.push({ type: 'home', suit });   // home, but out of the pot: it parks and the race goes on
   }
   checkpoints(state, ev);
 }
@@ -77,13 +97,11 @@ function checkpoints(state, ev) {
   }
 }
 
-// Deck ran out with nobody home: furthest King wins, earliest arrival breaks the tie.
+// Deck ran out with nobody home: the furthest King still in the pot wins, earliest
+// arrival breaks the tie.
 function photoFinish(state, ev) {
-  const best = Math.min(...SUITS.map(s => state.kingPos[s]));
-  const suit = SUITS.filter(s => state.kingPos[s] === best)
-    .reduce((a, b) => (state.arrival[a] <= state.arrival[b] ? a : b));
-  state.winner = suit;
-  ev.push({ type: 'win', suit, photoFinish: true });
+  state.winner = rankSuits(state, state.contenders)[0];
+  ev.push({ type: 'win', suit: state.winner, photoFinish: true });
 }
 
 function stepRace(state) {
@@ -98,7 +116,10 @@ function stepRace(state) {
 
 // ---------- Monte Carlo odds ----------
 
-// A playable copy of `state` with everything still unseen reshuffled.
+// A playable copy of `state` with everything still unseen reshuffled. `state.hidden`
+// holds cards the observer cannot see but knows are gone (other seats' hole cards):
+// they go back in the pool, and the sim then draws that many fewer -- exactly the same
+// thing as some random unknown cards being dead.
 function simState(state) {
   const bonusRow = {};
   const hidden = [];
@@ -110,7 +131,8 @@ function simState(state) {
   let i = 0;
   for (let r = 1; r <= BONUS_ROWS; r++) if (!bonusRow[r]) bonusRow[r] = hidden[i++];
   return {
-    mainDeck: shuffle(state.mainDeck.slice(state.deckIdx)),
+    mainDeck: shuffle(state.mainDeck.slice(state.deckIdx).concat(state.hidden || []))
+      .slice(0, state.mainDeck.length - state.deckIdx),
     bonusRow,
     kingPos: { ...state.kingPos },
     revealed: new Set(state.revealed),
@@ -118,6 +140,7 @@ function simState(state) {
     winner: null,
     arrival: { ...state.arrival },
     tick: state.tick,
+    contenders: [...state.contenders],
   };
 }
 
@@ -134,5 +157,5 @@ function odds(state, runs = 1200) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { SUITS, SUIT_COLOR, RANKS, ROWS, shuffle, newRaceState, stepRace, odds };
+  module.exports = { SUITS, SUIT_COLOR, RANKS, ROWS, shuffle, newRaceState, dealHoles, rankSuits, stepRace, odds };
 }

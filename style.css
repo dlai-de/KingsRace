@@ -18,6 +18,9 @@
   --black:#1a1a1a;
   --ink:#eef1ee;
   --muted:#9fb3a8;
+  /* ponytail: pacing knob. Scales every animation below (calc) and every
+     sleep in game.js, which reads this value. 1 = the original crawl. */
+  --spd:.55;
   font-size:16px;
 }
 
@@ -144,37 +147,6 @@ h1{
   display:flex; align-items:stretch; justify-content:center; gap:20px;
 }
 
-/* ---------- timeline (pinned to the left, below the title) ---------- */
-.timeline-panel{
-  position:absolute; left:22px; top:74px; bottom:34px;
-  width:340px; height:300px; margin:auto 0;
-  display:flex; flex-direction:column; gap:8px;
-}
-.timeline-title{
-  font-family:'Card Characters','Cinzel',serif; font-size:.85rem; letter-spacing:.15em; text-transform:uppercase;
-  color:var(--gold); opacity:.8; flex:0 0 auto;
-}
-.timeline{
-  list-style:none; margin:0; padding:6px 10px 6px 0;
-  flex:1 1 auto; min-height:0; overflow-y:auto;
-  display:flex; flex-direction:column; justify-content:flex-end; gap:7px;
-  mask-image:linear-gradient(to bottom, transparent 0, black 24px);
-}
-.timeline::-webkit-scrollbar{ width:5px; }
-.timeline::-webkit-scrollbar-thumb{ background:rgba(212,175,106,.3); border-radius:3px; }
-.tl-entry{
-  flex:0 0 auto;
-  font-size:.82rem; line-height:1.4; color:var(--ink);
-  padding:7px 10px; border-radius:8px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  background:rgba(255,255,255,.04); border-left:2px solid var(--gold);
-  animation:tlIn .35s ease both;
-}
-@keyframes tlIn{
-  from{ opacity:0; transform:translateX(-8px); }
-  to{ opacity:1; transform:translateX(0); }
-}
-
 /* ---------- deck panel (left of board) ---------- */
 .deck-panel{
   flex:0 0 auto; width:150px;
@@ -198,9 +170,9 @@ h1{
 .discard-stack i:nth-child(2){ transform:translate(calc(var(--th) * -.5),calc(var(--th) * .5)); opacity:.8; }
 .discard-stack i:nth-child(3){ transform:translate(0,0); }
 
-.deck-stack.shuffling i:nth-child(1){ animation:shuffleA .28s ease-in-out 5; }
-.deck-stack.shuffling i:nth-child(2){ animation:shuffleB .28s ease-in-out 5; }
-.deck-stack.shuffling i:nth-child(3){ animation:shuffleC .28s ease-in-out 5; }
+.deck-stack.shuffling i:nth-child(1){ animation:shuffleA calc(.28s * var(--spd)) ease-in-out 5; }
+.deck-stack.shuffling i:nth-child(2){ animation:shuffleB calc(.28s * var(--spd)) ease-in-out 5; }
+.deck-stack.shuffling i:nth-child(3){ animation:shuffleC calc(.28s * var(--spd)) ease-in-out 5; }
 @keyframes shuffleA{ 50%{ transform:translate(-12px,-5px) rotate(-10deg);} }
 @keyframes shuffleB{ 50%{ transform:translate(12px,-7px) rotate(10deg);} }
 @keyframes shuffleC{ 50%{ transform:translate(0,-9px) rotate(2deg);} }
@@ -209,7 +181,7 @@ h1{
 .flip-container .flipper, .token.bonus-card .flipper{
   position:relative; width:100%; height:100%;
   transform-style:preserve-3d;
-  transition:transform .6s cubic-bezier(.4,.2,.2,1);
+  transition:transform calc(.6s * var(--spd)) cubic-bezier(.4,.2,.2,1);
   border-radius:8px;
 }
 .flip-container .flipper.flipped, .token.bonus-card.flipped .flipper{ transform:rotateY(180deg); }
@@ -222,10 +194,17 @@ h1{
 .deck-counter{ font-size:.8rem; color:var(--muted); letter-spacing:.03em; }
 #odds-btn{ padding:.4em .9em; font-size:.75rem; }
 #odds-btn.on{ color:var(--felt-2); background:linear-gradient(160deg,var(--gold-bright),var(--gold)); border-color:transparent; }
-.rider-label .odds{
+.rider-label .odds, .rider-label .stake{
   display:block; font-family:'Poppins',sans-serif; font-style:normal;
   font-size:.7rem; font-weight:500; letter-spacing:0; color:var(--muted);
 }
+.rider-label .stake{ font-size:.65rem; color:var(--gold); opacity:.85; }
+
+/* your two hole cards -- in the deck panel, and again in the betting overlay */
+.hole-cards{ display:flex; gap:6px; }
+.hole-cards .pc-front{ width:54px; height:78px; flex:0 0 auto; }
+.hole-cards .pc-corner{ font-size:.58rem; }
+.hole-cards .big-pip{ font-size:1.25rem; }
 
 /* ---------- Bicycle-style playing cards (shared) ---------- */
 .pc-back{
@@ -281,7 +260,7 @@ h1{
   height:100%; flex:0 1 auto;
   display:flex; align-items:flex-start;
   padding-right:96px; /* reserved for the START/FINISH rails outside the grid */
-  padding-bottom:38px; /* reserved for the YOU/PC rider labels below the grid */
+  padding-bottom:54px; /* reserved for the rider labels below the grid: tag, odds, stack */
 }
 #board{
   position:relative;
@@ -339,21 +318,25 @@ h1{
   /* ponytail: --ty is the row offset in % of the token's own height (see ROWSTEP in game.js).
      Transform transitions stay on the compositor; `top` would relayout the whole board each frame. */
   transform:translateY(var(--ty,0));
-  transition: transform .65s cubic-bezier(.34,1.3,.4,1);
+  transition: transform calc(.65s * var(--spd)) cubic-bezier(.34,1.3,.4,1);
+  /* every token slides or flips repeatedly; a compositor layer each keeps the felt,
+     the cell borders and the card art from repainting under them every frame. */
+  will-change: transform;
 }
 .token.king{ z-index:2; }
 .token.king .pc-corner{ font-size:.6rem; }
 .token.king .big-pip{ font-size:.7rem; margin-top:-1px; }
 .token.king.player{ box-shadow:0 0 0 2px var(--gold-bright), 0 4px 14px rgba(243,217,154,.5); }
 .token.king.computer{ box-shadow:0 0 0 2px #7a9bc4, 0 4px 14px rgba(122,155,196,.5); }
-.token.king.winner{ animation:winnerPulse 1s ease infinite; z-index:5; will-change:transform; }
+.token.king.folded{ opacity:.5; filter:grayscale(.6); box-shadow:0 4px 10px rgba(0,0,0,.4); }
+.token.king.winner{ animation:winnerPulse calc(1s * var(--spd)) ease infinite; z-index:5; will-change:transform; }
 
 .token.bonus-card{ perspective:600px; }
 .token.bonus-card .pc-corner{ font-size:.55rem; }
 .token.bonus-card .big-pip{ font-size:1.05rem; }
 
 /* entrance dealt-from-left animation */
-.token.enter{ animation:dealIn .5s cubic-bezier(.2,1.4,.4,1) both; }
+.token.enter{ animation:dealIn calc(.5s * var(--spd)) cubic-bezier(.2,1.4,.4,1) both; }
 @keyframes dealIn{
   from{ opacity:0; transform:translateY(var(--ty,0)) translateX(-30px) scale(.7); }
   to{ opacity:1; transform:translateY(var(--ty,0)) scale(1); }
@@ -372,7 +355,7 @@ h1{
   font-family:'Card Characters','Cinzel',serif; font-size:8rem; color:var(--gold-bright);
   text-shadow:0 0 40px rgba(243,217,154,.7);
 }
-#countdown-number.pulse{ animation:countPulse .65s ease; }
+#countdown-number.pulse{ animation:countPulse calc(.65s * var(--spd)) ease; }
 @keyframes countPulse{
   from{ transform:scale(.4); opacity:0; }
   35%{ transform:scale(1.15); opacity:1; }
@@ -386,6 +369,7 @@ h1{
   animation:fadeIn .25s ease both;
 }
 .paused-box{ display:flex; flex-direction:column; align-items:center; gap:22px; }
+.paused-sub{ margin:-10px 0 0; font-size:.9rem; color:var(--muted); }
 .paused-title{
   font-family:'Card Characters','Cinzel',serif; font-size:2.4rem; letter-spacing:.15em; color:var(--gold-bright);
   text-shadow:0 0 40px rgba(243,217,154,.5);
@@ -422,6 +406,7 @@ h1{
 .pick-card .big-pip{ font-size:1rem; }
 #victory-title{ font-family:'Card Characters','Cinzel',serif; color:var(--gold-bright); margin:.3em 0 .2em; font-size:1.9rem; }
 #victory-subtitle{ opacity:.85; font-size:1rem; max-width:340px; }
+#victory-chips{ margin-top:.8em; font-size:.9rem; color:var(--gold-bright); }
 .btn-row{ display:flex; justify-content:center; align-items:center; gap:14px; margin-top:1.4em; }
 .btn-row button{
   min-width:150px; padding:.7em 1.2em; font-size:.95rem; font-weight:600;
@@ -479,10 +464,6 @@ h1{
 .rules-card ul{ margin:0 0 1.3em; padding-left:1.1em; display:flex; flex-direction:column; gap:.55em; align-self:stretch; }
 .rules-card li{ font-size:.92rem; line-height:1.4; }
 
-@media (max-width:1100px){
-  .timeline-panel{ width:260px; height:190px; }
-  .tl-entry{ font-size:.74rem; padding:6px 8px; }
-}
 @media (max-width:900px){
   #board{ aspect-ratio:9/16; }
   .board-wrap{ padding-right:70px; }

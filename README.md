@@ -14,14 +14,16 @@ A card-based horse race game, played entirely with a deck of playing cards on an
 
 ## Modes
 
-- **Vs Computer** — pick your King, the computer randomly picks another. The remaining two race unclaimed.
-- **Play with Friends** — name up to 4 riders, one per suit, and race together on the same screen.
+- **Vs Computer** — pick your King; three AI riders take the other three, and you play poker over the race.
+- **Play with Friends** — name up to 4 riders, one per suit, and race together on the same screen (no betting).
 
 From the victory screen you can start a **New Race** (same mode and setup) or **Change Mode** to set up a different one.
 
 ## Features
 
-- Fully automatic race with a shuffle animation, countdown, and a Race Log narrating every draw, move, and checkpoint.
+- Fully automatic race with a shuffle animation and a countdown.
+- **Vs Computer is a 4-handed poker table**: everyone gets 2 private hole cards — dead cards that never race, so they quietly slow their own suit — then four fixed-limit betting rounds as the bonus cards flip. Fold and your King races on, but it can no longer win the pot.
+- Optional **Odds** readout: a Monte Carlo win chance per King, priced from what you alone can see.
 - Pause/Resume at any time; the in-game rules panel (bottom-right) pauses the race automatically while open.
 - A deck pile that visibly thins out and a discard pile that grows as the game progresses.
 - Bicycle-style playing cards throughout — face cards use custom King/Queen/Jack/Joker artwork.

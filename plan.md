@@ -34,15 +34,15 @@ Card counting becomes hand reading. That's the game.
 | **Limits** | Small bet on streets 1–2, big bet (2×) on streets 3–4, **cap 3 raises**. |
 | **Actions** | check / bet / call / raise / fold. |
 | **No side pots, ever** | Clamp any bet to the shortest live stack. |
-| **Folding** | You're out of the pot; your King keeps racing. |
-| **Showdown** | Race finish. Pot to the owner of the winning King. All-but-one folds → pot awarded immediately, race fast-forwards to the finish for the reveal. |
+| **Folding** | You're out of the pot; your King keeps racing (it still clears rows) but can no longer win — it parks on the finish row and the race runs on. |
+| **Showdown** | Race finish. Only a King still in the pot can end the race, so the winner is always someone who paid to be there. All-but-one folds → the race fast-forwards to the finish for the reveal. |
 
 Fixed-limit over no-limit deliberately: it kills side pots, all-in math, and stack-size
 balancing — three subsystems you don't have to write. It's also the structure that survives a
 bad odds model, because a mispriced bet costs one increment, not the stack.
 
-**Vs-Computer mode change:** the computer must play **all three** other Kings as three separate
-AI bettors. Today two Kings are unclaimed — with unclaimed Kings, ~50% of pots have no owner and
+**Vs-Computer mode change:** the computer plays **all three** other Kings as three separate
+AI bettors. Before Phase 3 two Kings were unclaimed — with unclaimed Kings, ~50% of pots have no owner and
 end in an awkward refund. Three AI seats cost nothing once the odds engine exists, and give you a
 real 4-handed table.
 
@@ -83,8 +83,8 @@ cards for hole cards makes it likelier. Fix: reshuffle the discard, or declare a
 |---|---|---|
 | **0** | Extract `race.js`; fix deck exhaustion | ✅ Done — invisible, but real test coverage |
 | **1** | Monte Carlo + Handicapper win% toggle | ✅ Done |
-| **2** | Bankroll (`localStorage`, 100 chips), ante, single pre-race bet, no streets | Yes — a complete betting game |
-| **3** | Hole cards + 4 streets + fixed-limit actions + 3 AI seats | The real thing |
+| **2** | Bankroll (`localStorage`, 100 chips), ante, single pre-race bet, no streets | ✅ Done — `bets.js`; unclaimed pot rides over |
+| **3** | Hole cards + 4 streets + fixed-limit actions + 3 AI seats | ✅ Done — the real thing |
 | **4** | Friends hot-seat, bust-out tournament | Later |
 
 **Friends mode:** private hole cards on one shared screen need pass-the-device peek gates — real

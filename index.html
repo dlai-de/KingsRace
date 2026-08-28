@@ -72,7 +72,7 @@
     <button class="mode-card" data-mode="computer">
       <img class="mode-icon" src="assets/images/pc.webp" alt="">
       <span class="mode-title">Vs Computer</span>
-      <span class="mode-desc">Pick a King. The computer picks another.</span>
+      <span class="mode-desc">Pick a King. Three AI riders take the rest, and the poker starts.</span>
     </button>
     <button class="mode-card" data-mode="friends">
       <img class="mode-icon" src="assets/images/group.webp" alt="">
@@ -118,11 +118,6 @@
     <button id="pause-btn" class="pause-btn">Pause</button>
   </header>
 
-  <aside class="timeline-panel">
-    <span class="timeline-title">Race Log</span>
-    <ol id="timeline" class="timeline"></ol>
-  </aside>
-
   <div class="race-main">
     <aside class="deck-panel">
       <div class="pile">
@@ -140,7 +135,9 @@
         <span class="pile-label">Discard</span>
       </div>
       <div id="deck-counter" class="deck-counter">44 cards left</div>
+      <div id="chips" class="deck-counter hidden"></div>
       <button id="odds-btn" class="pause-btn btn-ghost" title="Monte Carlo win chance for each King">Odds</button>
+      <div id="hole-cards" class="hole-cards hidden" aria-label="Your hole cards"></div>
     </aside>
 
     <div class="board-wrap">
@@ -166,6 +163,7 @@
     <div id="victory-winner" class="victory-winner"></div>
     <h2 id="victory-title"></h2>
     <p id="victory-subtitle"></p>
+    <p id="victory-chips"></p>
     <div class="btn-row">
       <button id="replay-btn">New Race</button>
       <button id="change-mode-btn" class="btn-ghost">Change Mode</button>
@@ -195,12 +193,19 @@
       <li>First King to reach the top row wins!</li>
       <li>If the deck runs out, the King furthest ahead takes it — photo finish.</li>
       <li>Hit <b>Odds</b> to see each King’s live win chance.</li>
+      <li>Vs Computer: you and three AI riders each take a King and ante up.</li>
+      <li>You’re each dealt 2 <b>hole cards</b> — dead cards that never race. Yours are secret, and every one of them is an advance its suit will never get.</li>
+      <li>Four betting rounds: before the start, then after the 2nd, 4th and 6th bonus card flips.</li>
+      <li>Fixed limit — check, bet, call, raise (3 max) or fold.</li>
+      <li>Fold and your King races on, but it can no longer win: it parks at the finish and the race runs until a King still in the pot gets home.</li>
+      <li>The pot goes to that King's rider.</li>
     </ul>
     <button id="rules-close" class="pause-btn">Close</button>
   </div>
 </div>
 
 <script src="race.js"></script>
+<script src="bets.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
