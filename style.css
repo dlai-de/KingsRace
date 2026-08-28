@@ -220,9 +220,17 @@ h1{
 }
 .rider-label .stake{ font-size:.65rem; color:var(--gold); opacity:.85; }
 
-/* your two hole cards -- in the deck panel, and again in the betting overlay */
-.hole-cards{ display:flex; gap:6px; flex-wrap:wrap; }   /* five by the last street */
-.hole-cards .pc-front{ width:54px; height:78px; flex:0 0 auto; }
+/* your hole cards -- in the deck panel */
+/* fanned like a held hand: fixed footprint, so the 3rd-5th card slot in without
+   nudging the deck, the counter or the buttons. */
+.hole-cards{ display:flex; justify-content:center; height:96px; align-items:flex-end; }
+.hole-cards .pc-front{
+  width:54px; height:78px; flex:0 0 auto;
+  transform-origin:50% 190%;
+  transform:rotate(calc(var(--i, 0) * 7deg));
+  transition:transform calc(.3s * var(--spd)) ease;
+}
+.hole-cards .pc-front + .pc-front{ margin-left:-32px; }   /* 5 cards stay inside the 150px panel */
 .hole-cards .pc-corner{ font-size:.58rem; }
 .hole-cards .big-pip{ font-size:1.25rem; }
 
@@ -280,7 +288,7 @@ h1{
   height:100%; flex:0 1 auto;
   display:flex; align-items:flex-start;
   padding-right:96px; /* reserved for the START/FINISH rails outside the grid */
-  padding-bottom:120px; /* reserved for the seat plaques below the grid: chips, tag, odds, stack, action */
+  padding-bottom:144px; /* reserved for the seat plaques below the grid: chips, tag, odds, stack piles, stack, action */
 }
 #board{
   position:relative;
@@ -360,6 +368,13 @@ h1{
 .chip.c5 { --rim:#a8332b; --face:#e0574c; }
 .chip.c10{ --rim:#26527f; --face:#4a83c9; }
 .chip.c25{ --rim:#276241; --face:#409a63; }
+
+/* stacks and the pot: piles seen slightly from above, so the top disc shows its face
+   and the ones under it only their rims. Fixed height -- growing never moves anything. */
+.stack{ display:flex; justify-content:center; align-items:flex-end; gap:3px; height:24px; }
+.stack > span{ display:flex; flex-direction:column-reverse; }
+.stack .chip{ margin:-11px 0 0; }
+.stack .chip:last-child{ margin-top:0; }   /* the disc on top of the pile */
 
 #cells{
   position:absolute; inset:8px;
@@ -560,7 +575,7 @@ h1{
 
 @media (max-width:900px){
   #board{ aspect-ratio:9/16; }
-  .board-wrap{ padding-right:70px; padding-bottom:110px; }
+  .board-wrap{ padding-right:70px; padding-bottom:129px; }
   .rail{ font-size:.62rem; margin-left:8px; }
   .deck-panel{ width:110px; }
   .betlog{ left:6px; }
@@ -575,6 +590,11 @@ h1{
   @keyframes dockIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
   .rider-label{ font-size:.72rem; letter-spacing:.04em; }
   .chip{ width:11px; height:11px; margin-left:-4px; }
+  .stack{ height:19px; gap:2px; }
+  .stack .chip{ margin:-8px 0 0; }
   .flip-container{ width:78px; height:112px; }
+  .hole-cards{ height:78px; }
+  .hole-cards .pc-front{ width:44px; height:64px; }
+  .hole-cards .pc-front + .pc-front{ margin-left:-28px; }
   #countdown-number{ font-size:5rem; }
 }

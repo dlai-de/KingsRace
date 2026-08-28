@@ -327,7 +327,7 @@ function setRiderLabels() {
   SUITS.forEach(suit => {
     const label = mode === 'computer' ? SEAT_TAG[suitSeat[suit]] : (riderNames[suit] || '');
     const el = document.getElementById('label-' + suit);
-    el.innerHTML = '<i class="chips"></i><b class="tag"></b><i class="odds"></i><i class="stake"></i><i class="said"></i>';
+    el.innerHTML = '<i class="chips"></i><b class="tag"></b><i class="odds"></i><i class="stack"></i><i class="stake"></i><i class="said"></i>';
     el.querySelector('.tag').textContent = label;   // friends-mode names are user input
     el.classList.toggle('you', mode === 'computer' && suit === playerSuit);
   });
@@ -399,7 +399,10 @@ function renderChips() {
   // that the countdown is over and the new blinds are waiting on the next deal.
   const bb = purse.bb || bigBlind(purse.ms);
   const left = bigBlind(purse.ms) !== bb ? 0 : levelLeft(purse.ms);
-  chipsEl.innerHTML = `Bank ${purse.you} · Pot ${pot}<br>` +
+  // The pot as piles, same discs as the seats' stacks -- fixed-height row, so it never
+  // shoves the deck panel around as the pot grows.
+  chipsEl.innerHTML = `<i class="stack">${stackHTML(pot)}</i>` +
+    `Bank ${purse.you} · Pot ${pot}<br>` +
     `Blinds ${bb / 2}/${bb} · ${left === Infinity ? 'top level' : left ? 'up in ' + mmss(left) : 'up next hand'}`;
   renderStakes();
 }
@@ -414,6 +417,19 @@ const staked = s => Math.max(0, (handStart[s] ?? purse[s]) - purse[s]);
 // underneath anyway, so a deep stake reads as "a lot" rather than sprawling sideways.
 const chipsHTML = n => chipSplit(n).slice(0, 6).map(v => `<i class="chip c${v}"></i>`).join('');
 
+// Any amount -- a seat's stack, the pot -- as little piles four discs tall, biggest
+// denomination first. A deep pile spills into more piles rather than one skyscraper.
+// ponytail: four piles wide is the whole visual budget, so anything past 400 reads the
+// same. The exact figure is spelled out right underneath.
+const stackHTML = n => chipSplit(n)
+  .reduce((piles, v) => {
+    const top = piles.at(-1);
+    if (top && top.v === v && top.k < 4) top.k++; else piles.push({ v, k: 1 });
+    return piles;
+  }, [])
+  .slice(0, 4)
+  .map(({ v, k }) => `<span>${`<i class="chip c${v}"></i>`.repeat(k)}</span>`).join('');
+
 function renderStakes() {
   if (mode !== 'computer' || !seatSuit.you) return;
   SEATS.forEach(s => {
@@ -424,6 +440,7 @@ function renderStakes() {
     const committed = staked(s);
     // Folded chips have been pushed into the pot -- the seat's square is empty again.
     el.querySelector('.chips').innerHTML = out || folded ? '' : chipsHTML(committed);
+    el.querySelector('.stack').innerHTML = out ? '' : stackHTML(purse[s]);
     el.querySelector('.stake').textContent =
       out ? 'out' : folded ? 'folded' : `${purse[s]} · in ${committed}`;
   });
@@ -436,8 +453,10 @@ function assignSeats() {
   SEATS.forEach(s => { suitSeat[seatSuit[s]] = s; });
 }
 
-const handHTML = cards => cards.map(c =>
-  `<div class="pc-front ${SUIT_COLOR[c.suit]}">${cardInnerHTML(c.rank, SUIT_GLYPH[c.suit], SUIT_COLOR[c.suit])}</div>`).join('');
+// --i is the card's offset from the middle of the hand: CSS fans the cards off it, so a
+// new hole card slots into the fan instead of growing the panel and shoving the deck.
+const handHTML = cards => cards.map((c, i) =>
+  `<div class="pc-front ${SUIT_COLOR[c.suit]}" style="--i:${i - (cards.length - 1) / 2}">${cardInnerHTML(c.rank, SUIT_GLYPH[c.suit], SUIT_COLOR[c.suit])}</div>`).join('');
 
 // What a seat can see: the public race, plus the knowledge that the other seats' hole
 // cards -- two more each per street -- are dead without being able to name them. race.js
