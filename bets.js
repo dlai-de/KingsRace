@@ -10,6 +10,18 @@ const BUYIN = 100;
 const BLINDS = [10, 20, 40, 80];
 const LEVEL_MS = 120000;   // real playing time per blind level
 const CAP = 3;             // raises per street, on top of the opening bet
+// Cards drawn between betting rounds. Streets used to open only when a bonus card
+// turned, and that mechanic fires about twice a race: over 40k sims one hand in seven
+// never got a second round at all and only a quarter reached street 4, so a third of
+// every race was watched with nothing at stake.
+// Eight cards is roughly eleven seconds at --spd .55. Tighter spacing buys more streets
+// (five cards puts 91% of hands on the full four against 53%) but spends them early: the
+// ladder tops out around card 15 and leaves a five-card run to the finish with the
+// betting already closed. At eight that tail is 2.3 cards, so the money is still moving
+// near the line, and the pot it costs is 144 chips against 156 -- 8%, which is noise.
+// Every street also deals another hole card, so this is deck pressure too: the deck runs
+// out under a live race in 8.1% of hands against 6.8%, and photoFinish covers it.
+const STREET_GAP = 8;      // cards between streets, when no bonus card opens one first
 const SEATS = ['you', 'a1', 'a2', 'a3'];
 
 const blindLevel = ms => Math.min(Math.floor(ms / LEVEL_MS), BLINDS.length - 1);
@@ -315,5 +327,5 @@ const chipSplit = n => CHIPS.flatMap(v => {
 });
 
 if (typeof module !== 'undefined') {
-  module.exports = { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot, chipSplit };
+  module.exports = { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, STREET_GAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot, chipSplit };
 }

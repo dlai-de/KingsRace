@@ -232,7 +232,7 @@ h1{
 /* your hole cards -- in the deck panel */
 /* fanned like a held hand: fixed footprint, so the 3rd-5th card slot in without
    nudging the deck, the counter or the buttons. */
-.hole-cards{ display:flex; justify-content:center; height:96px; align-items:flex-end; }
+.hole-cards{ display:flex; justify-content:center; min-height:96px; align-items:flex-end; }
 .hole-cards .pc-front{
   width:54px; height:78px; flex:0 0 auto;
   transform-origin:50% 190%;
@@ -288,8 +288,8 @@ h1{
 .pc-front.red .pc-corner, .pc-front.red .big-pip{ color:var(--red); }
 .pc-front.black .pc-corner, .pc-front.black .big-pip{ color:var(--black); }
 
-/* current-card face sizing */
-.flip-container .pc-center .big-pip{ font-size:2.4rem; }
+/* current-card face sizing -- a court card keeps the small pip under its figure */
+.flip-container .pc-center:not(.has-figure) .big-pip{ font-size:2.4rem; }
 .flip-container .pc-corner{ font-size:1rem; }
 
 /* ---------- BOARD ---------- */
@@ -543,9 +543,6 @@ h1{
 }
 .side-btn img,.side-btn svg{ width:56%; height:56%; }
 .side-btn:hover{ transform:translateY(-2px) scale(1.05); filter:brightness(1.05); }
-.side-btn:hover .string{ animation:strum 0.9s ease-in-out infinite; }
-@keyframes strum{ 0%,100%{ d:path("M13.95 8.00C13.95 8.83 12.98 9.92 12.33 10.50C11.68 11.08 10.75 11.09 10.03 11.51C9.30 11.92 8.83 12.73 8.00 13.00C7.17 13.27 5.75 13.57 5.03 13.15C4.30 12.74 3.85 11.36 3.67 10.50C3.49 9.64 3.95 8.83 3.95 8.00C3.95 7.17 3.49 6.36 3.67 5.50C3.85 4.64 4.30 3.26 5.02 2.85C5.75 2.43 7.17 2.73 8.00 3.00C8.83 3.27 9.30 4.08 10.03 4.49C10.75 4.91 11.68 4.92 12.33 5.50C12.98 6.08 13.95 7.17 13.95 8.00Z"); } 50%{ d:path("M12.05 8.00C12.05 8.83 12.51 9.64 12.33 10.50C12.15 11.36 11.70 12.74 10.98 13.15C10.25 13.57 8.83 13.27 8.00 13.00C7.17 12.73 6.70 11.92 5.98 11.51C5.25 11.09 4.32 11.08 3.67 10.50C3.02 9.92 2.05 8.83 2.05 8.00C2.05 7.17 3.02 6.08 3.67 5.50C4.32 4.92 5.25 4.91 5.97 4.49C6.70 4.08 7.17 3.27 8.00 3.00C8.83 2.73 10.25 2.43 10.98 2.85C11.70 3.26 12.15 4.64 12.33 5.50C12.51 6.36 12.05 7.17 12.05 8.00Z"); } }
-@media (prefers-reduced-motion:reduce){ .side-btn:hover .string{ animation:none; } }
 
 #rules-panel{
   position:fixed; inset:0; z-index:80;
@@ -612,7 +609,7 @@ h1{
   .stack{ height:19px; gap:2px; }
   .stack .chip{ margin:-8px 0 0; }
   .flip-container{ width:78px; height:112px; }
-  .hole-cards{ height:78px; }
+  .hole-cards{ min-height:78px; }
   .hole-cards .pc-front{ width:44px; height:64px; }
   .hole-cards .pc-front + .pc-front{ margin-left:-28px; }
   #countdown-number{ font-size:5rem; }
@@ -640,7 +637,7 @@ h1{
   .deck-stack{ width:40px; height:57px; }
   .flip-container{ width:56px; height:80px; }
   .deck-counter{ font-size:.58rem; max-width:74px; text-align:center; line-height:1.35; }
-  .hole-cards{ height:56px; padding-right:14px; }   /* the fan leans right; keep it off the edge */
+  .hole-cards{ min-height:56px; padding-right:14px; }   /* the fan leans right; keep it off the edge */
   .hole-cards .pc-front{ width:34px; height:49px; transform:rotate(calc(var(--i, 0) * 4deg)); }
   .hole-cards .pc-front + .pc-front{ margin-left:-22px; }
   .hole-cards .pc-corner{ font-size:.46rem; }
@@ -657,6 +654,17 @@ h1{
   .bet-street{ font-size:.62rem; }
   .bet-dock .btn-row button{ padding:.45em .7em; font-size:.72rem; }
   .bet-size{ font-size:.62rem; }
+
+  /* a card in a phone-sized cell has room for one index, not two, and a court card has
+     none for a centre pip beside its figure -- the extras only land on the artwork. */
+  .token .pc-corner.br{ display:none; }
+  .token .pc-center.has-figure .big-pip{ display:none; }
+  .token .pc-center.has-figure{ padding-left:20%; }   /* the figure sits beside the index, not on it */
+  .token .big-pip{ font-size:.85rem; }
+  /* the current card is a third of its desktop size: its type has to come down with it */
+  .flip-container .pc-center:not(.has-figure) .big-pip{ font-size:1.5rem; }
+  .flip-container .pc-corner{ font-size:.6rem; }
+  .flip-container .figure-img{ width:48%; }
 
   /* the casino arc needs width the phone board has not got -- sit the seats straight */
   #label-S, #label-D, #label-C, #label-H{ transform:none; }

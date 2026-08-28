@@ -131,7 +131,7 @@ console.assert(odds(nearly, 2000).H > 0.6, 'leader is not favoured');
 }
 
 // ---------- bets.js fixed-limit betting ----------
-const { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot }
+const { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, STREET_GAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot }
   = require('./bets.js');
 
 const BB = BLINDS[0], SB = BB / 2;
@@ -609,7 +609,10 @@ for (let i = 0; i < 3000; i++) {
       const { pot: opened, blinds } = openPot(purse, seated, hands);
       let pot = opened;
       race.contenders = live.map(s => suitOf[s]);
-      const betRound = (street, posted = {}) => {
+      let street = 0, lastBet = 0;
+      const betRound = (n, posted = {}) => {
+        street = n;
+        lastBet = race.deckIdx;      // both triggers time off the last round, as in game.js
         if (live.length < 2) return;
         dealHoles(race, live.length, street === 1 ? 2 : 1).forEach((h, i) => holes[live[i]].push(...h));
         if (betView) betView.mainDeck = race.mainDeck;   // priced off the shortened deck
@@ -627,13 +630,15 @@ for (let i = 0; i < 3000; i++) {
       };
 
       betRound(1, blinds);
-      let street = 1;
       while (street < 4 && !race.winner) {          // mirrors gameLoop in game.js
+        if (race.deckIdx - lastBet >= STREET_GAP) { betRound(street + 1); continue; }
         const preDraw = structuredClone(race);
         for (const e of stepRace(race)) {
-          if (e.type !== 'reveal' || street >= 4 || race.winner) continue;   // decided races take no bets
+          // Decided races take no bets, and neither does a bonus card landing on the heels
+          // of a timed street -- the cadence picks that round up a few cards later.
+          if (e.type !== 'reveal' || street >= 4 || race.winner || race.deckIdx - lastBet < 2) continue;
           betView = preDraw;                        // bet before the card is shown
-          betRound(++street);
+          betRound(street + 1);
           betView = null;
         }
       }
@@ -651,14 +656,19 @@ for (let i = 0; i < 3000; i++) {
     }
     console.assert(total(purse) === before, 'chips leaked over a full run');
   }
-  // One street per bonus card, so a hand plays as many as the race hands out. Over 20k
-  // sims: 89% of races reach street 2, 65% street 3, 36% street 4. What must not happen
-  // is a hand stuck on the opening street, or a fifth one past the fixed-limit ladder.
+  // A street every STREET_GAP cards as well as on every bonus card, so the ladder no
+  // longer depends on a mechanic that fires twice a race. Off the bonus cards alone one
+  // hand in seven never got past the opening street; on the cadence it is none, and 89%
+  // reach street 3. What must not happen is a hand stuck on street 1, or a fifth one
+  // past the fixed-limit ladder.
   console.assert(Object.keys(streetsRun).every(k => +k >= 1 && +k <= 4),
     'a hand ran off the four-street ladder: ' + JSON.stringify(streetsRun));
-  const past = Object.entries(streetsRun).reduce((a, [k, n]) => a + (+k > 1 ? n : 0), 0);
-  console.assert(past > (streetsRun[1] || 0),
-    'most hands never got past the opening street: ' + JSON.stringify(streetsRun));
+  const hands = Object.values(streetsRun).reduce((a, n) => a + n, 0);
+  const deep = Object.entries(streetsRun).reduce((a, [k, n]) => a + (+k >= 3 ? n : 0), 0);
+  console.assert(deep / hands > 0.8,
+    'the cadence is not carrying hands past street 2: ' + JSON.stringify(streetsRun));
+  console.assert(!streetsRun[1],
+    'a hand never got past the opening street: ' + JSON.stringify(streetsRun));
 }
 
 

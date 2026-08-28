@@ -73,6 +73,9 @@ let kingEls = {}, bonusEls = {};
 const SEAT_NAME = { you: 'You', a1: 'Dmitri', a2: 'Sasha', a3: 'Kolya' };
 const SEAT_TAG = { you: 'YOU', a1: 'DMITRI', a2: 'SASHA', a3: 'KOLYA' };
 let seatSuit = {}, suitSeat = {}, holes = {}, seated = [], live = [], pot = 0, street = 0;
+// The draw position the last betting round closed at, so a street can be timed off the
+// deck as well as off a bonus card.
+let lastBet = 0;
 let epoch = 0;   // bumped per race, so a replay can't leave the previous loop still stepping
 
 function newGame() {
@@ -80,7 +83,7 @@ function newGame() {
   epoch++;
   gameOver = false;
   paused = false;
-  seated = []; live = []; holes = {}; pot = 0; street = 0;
+  seated = []; live = []; holes = {}; pot = 0; street = 0; lastBet = 0;
   holeEl.innerHTML = '';
   pauseBtn.disabled = false;
 }
@@ -242,6 +245,15 @@ async function renderEvent(e) {
 async function gameLoop() {
   const mine = epoch;
   while (!gameOver && epoch === mine) {
+    // A street every STREET_GAP cards, not only when a bonus card turns: keyed to the
+    // reveals alone the betting was hostage to a mechanic that fires twice a race, and
+    // one hand in seven never got a second round at all. bets.js holds the spacing.
+    // Priced off the live board -- no bonus card is pending here, so there is nothing a
+    // snapshot would hide.
+    if (mode === 'computer' && street && street < 4 && race.deckIdx - lastBet >= STREET_GAP) {
+      await bettingRound(street + 1);
+      if (gameOver || epoch !== mine) return;
+    }
     // The table as it stood before this card. A street opens with the bonus card still
     // face down, so that snapshot -- not the mutated state -- is what the round is priced
     // off, or the AI would be betting on a card nobody has seen yet.
@@ -253,7 +265,10 @@ async function gameLoop() {
       if (gameOver || epoch !== mine) return;
       // `race.winner` guards a batch that revealed a bonus card and won on it in one
       // step: the race is already decided, so there is nothing left to bet on.
-      if (e.type === 'reveal' && !race.winner && mode === 'computer' && street && street < 4) {
+      // A bonus card landing right after a timed street would bet the same board twice
+      // in a row; the cadence picks that round up a few cards later instead.
+      if (e.type === 'reveal' && !race.winner && mode === 'computer' && street && street < 4
+          && race.deckIdx - lastBet >= 2) {
         betView = preDraw;
         await bettingRound(street + 1);
         betView = null;
@@ -588,6 +603,7 @@ function logBet(seat, text) {
 
 async function bettingRound(n, blinds = {}) {
   street = n;
+  lastBet = race.deckIdx;   // both triggers time off the last round, whichever opened it
   if (live.length < 2) return;
   // Two private cards to open, then one more per live seat before every later street's
   // money goes in, so each round is bet on a fresh read. They come out of the race deck,
