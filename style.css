@@ -376,7 +376,7 @@ h1{
 /* ---------- PAUSE OVERLAY ---------- */
 .paused-overlay{
   position:fixed; inset:0; z-index:45; display:flex; align-items:center; justify-content:center;
-  background:rgba(4,10,7,.55); backdrop-filter:blur(2px);
+  background:rgba(4,10,7,.68);
   animation:fadeIn .25s ease both;
 }
 .paused-box{ display:flex; flex-direction:column; align-items:center; gap:22px; }
@@ -389,7 +389,7 @@ h1{
 #screen-victory{
   position:fixed; inset:0; z-index:60;
   display:flex; align-items:center; justify-content:center;
-  background:rgba(4,10,7,.78); backdrop-filter:blur(3px);
+  background:rgba(4,10,7,.78);
   animation:fadeIn .5s ease both;
 }
 .victory-card{
@@ -458,7 +458,7 @@ h1{
 #rules-panel{
   position:fixed; inset:0; z-index:80;
   display:flex; align-items:center; justify-content:center;
-  background:rgba(4,10,7,.78); backdrop-filter:blur(3px);
+  background:rgba(4,10,7,.78);
   animation:fadeIn .25s ease both;
 }
 .rules-card{

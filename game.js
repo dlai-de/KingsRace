@@ -283,6 +283,7 @@ async function win(suit) {
 }
 
 function showVictory(suit) {
+  kingEls[suit].classList.remove('winner');
   victoryWinnerEl.innerHTML = `<div class="pc-front ${SUIT_COLOR[suit]}">${cardInnerHTML('K', SUIT_GLYPH[suit], SUIT_COLOR[suit])}</div>`;
   if (mode === 'computer') {
     if (suit === playerSuit) {
