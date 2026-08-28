@@ -58,6 +58,19 @@ console.assert(odds(nearly, 2000).H > 0.6, 'leader is not favoured');
   const seen = new Set(hands.flat().concat(s.mainDeck).map(c => c.suit + c.rank));
   console.assert(seen.size === 44, 'a card was duplicated or lost in the deal');
 
+  // A later street deals mid-race: the cards already played stay played, and the next
+  // card off the deck is still the one that was next before the deal.
+  stepRace(s); stepRace(s);
+  const next = s.mainDeck[s.deckIdx + 4];
+  const later = dealHoles(s, 4, 1);
+  console.assert(s.deckIdx === 2 && s.mainDeck.length === 32, 'street deal cut the wrong end of the deck');
+  console.assert(s.mainDeck[s.deckIdx] === next, 'street deal skipped cards from the race');
+  console.assert(new Set(hands.flat().concat(later.flat(), s.mainDeck)).size === 44,
+    'a card was duplicated or lost by a street deal');
+  s.deckIdx = s.mainDeck.length - 3;   // three cards left, four seats on one each: nobody gets one
+  console.assert(dealHoles(s, 4, 1).every(h => h.length === 0), 'a short deck dealt some seats and not others');
+  console.assert(s.mainDeck.length === 32, 'a short deck was dealt from anyway');
+
   const hidden = hands.slice(1).flat();
   const p = odds({ ...s, hidden }, 800);
   console.assert(Math.abs(SUITS.reduce((a, x) => a + p[x], 0) - 1) < 1e-9, 'hole-card odds do not sum to 1');
@@ -501,8 +514,7 @@ for (let i = 0; i < 3000; i++) {
       console.assert(++hands < 4000, 'a run never reached a single winner');
 
       const race = newRaceState();
-      const holes = {};
-      dealHoles(race, seated.length).forEach((h, i) => { holes[seated[i]] = h; });
+      const holes = Object.fromEntries(seated.map(s => [s, []]));
       let betView = null;   // the board before the pending bonus card, mirrors game.js
       const view = seat => ({ ...(betView || race), hidden: seated.filter(s => s !== seat).flatMap(s => holes[s]) });
 
@@ -513,6 +525,8 @@ for (let i = 0; i < 3000; i++) {
       race.contenders = live.map(s => suitOf[s]);
       const betRound = (street, posted = {}) => {
         if (live.length < 2) return;
+        dealHoles(race, live.length, street === 1 ? 2 : 1).forEach((h, i) => holes[live[i]].push(...h));
+        if (betView) betView.mainDeck = race.mainDeck;   // priced off the shortened deck
         const r = newRound(purse, live, street, pot, hands, posted);
         let guard = 0;
         for (let seat; (seat = actor(r));) {
@@ -530,7 +544,7 @@ for (let i = 0; i < 3000; i++) {
       while (street < 4 && !race.winner) {          // mirrors gameLoop in game.js
         const preDraw = structuredClone(race);
         for (const e of stepRace(race)) {
-          if (e.type !== 'reveal' || street >= 4) continue;
+          if (e.type !== 'reveal' || street >= 4 || race.winner) continue;   // decided races take no bets
           betView = preDraw;                        // bet before the card is shown
           betRound(++street);
           betView = null;

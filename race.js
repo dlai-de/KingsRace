@@ -45,11 +45,17 @@ function newRaceState() {
   };
 }
 
-// Two cards per seat, dealt off the top and never drawn again. That is the private
+// `n` cards a seat, dealt off the undrawn top and never drawn again. That is the private
 // information the whole betting game hangs on: every hole card is one advance its suit
 // will never get, and only its holder knows it is gone.
-function dealHoles(state, seats) {
-  return Array.from({ length: seats }, () => state.mainDeck.splice(0, 2));
+// Dealt at `deckIdx`, not at index 0, because a street deals mid-race: splicing off the
+// front would drop cards already played and slide the undrawn deck out from under the
+// draw position, silently skipping cards.
+// All seats or none: a late street can find fewer cards left than the table needs, and
+// splice would quietly hand the first seats a card and the last seats nothing.
+function dealHoles(state, seats, n = 2) {
+  const short = state.mainDeck.length - state.deckIdx < n * seats;
+  return Array.from({ length: seats }, () => short ? [] : state.mainDeck.splice(state.deckIdx, n));
 }
 
 // Best-placed first: furthest up the board, earliest arrival breaks the tie.

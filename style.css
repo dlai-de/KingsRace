@@ -221,7 +221,7 @@ h1{
 .rider-label .stake{ font-size:.65rem; color:var(--gold); opacity:.85; }
 
 /* your two hole cards -- in the deck panel, and again in the betting overlay */
-.hole-cards{ display:flex; gap:6px; }
+.hole-cards{ display:flex; gap:6px; flex-wrap:wrap; }   /* five by the last street */
 .hole-cards .pc-front{ width:54px; height:78px; flex:0 0 auto; }
 .hole-cards .pc-corner{ font-size:.58rem; }
 .hole-cards .big-pip{ font-size:1.25rem; }

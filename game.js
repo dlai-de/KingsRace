@@ -257,7 +257,9 @@ async function gameLoop() {
     const preDraw = structuredClone(race);
     for (const e of stepRace(race)) {
       if (gameOver || epoch !== mine) return;
-      if (e.type === 'reveal' && mode === 'computer' && street && street < 4) {
+      // `race.winner` guards a batch that revealed a bonus card and won on it in one
+      // step: the race is already decided, so there is nothing left to bet on.
+      if (e.type === 'reveal' && !race.winner && mode === 'computer' && street && street < 4) {
         betView = preDraw;
         await bettingRound(street + 1);
         betView = null;
@@ -437,8 +439,9 @@ function assignSeats() {
 const handHTML = cards => cards.map(c =>
   `<div class="pc-front ${SUIT_COLOR[c.suit]}">${cardInnerHTML(c.rank, SUIT_GLYPH[c.suit], SUIT_COLOR[c.suit])}</div>`).join('');
 
-// What a seat can see: the public race, plus the knowledge that six cards it cannot
-// name are dead. race.js puts those back in the pool and deals that many fewer.
+// What a seat can see: the public race, plus the knowledge that the other seats' hole
+// cards -- two more each per street -- are dead without being able to name them. race.js
+// puts those back in the pool and deals that many fewer.
 // `betView` is set while a street is being bet ahead of a bonus card: everyone prices
 // the hand off the board as it was before that card flipped.
 let betView = null;
@@ -550,6 +553,16 @@ function logBet(seat, text) {
 async function bettingRound(n, blinds = {}) {
   street = n;
   if (live.length < 2) return;
+  // Two private cards to open, then one more per live seat before every later street's
+  // money goes in, so each round is bet on a fresh read. They come out of the race deck,
+  // so every card dealt is one the race will not draw: two a street burned so much of it
+  // that a third of the races died on an empty deck instead of at the finish line.
+  dealHoles(race, live.length, n === 1 ? 2 : 1).forEach((h, i) => holes[live[i]].push(...h));
+  holeEl.innerHTML = handHTML(holes.you);
+  updateDeckCounter();
+  // The snapshot this street is priced off was cloned before the deal, so hand it the
+  // live deck: otherwise the sim would deal these same cards out a second time.
+  if (betView) betView.mainDeck = race.mainDeck;
   const r = newRound(purse, live, n, pot, purse.hand, blinds);
   SUITS.forEach(su => { said(su).textContent = ''; });   // last street's talk is stale
   betlogEl.innerHTML = '';                                // and so are its chips
@@ -605,10 +618,7 @@ async function openTable() {
   live = [...seated];
   race.contenders = live.map(s => seatSuit[s]);   // eliminated Kings race, but can't win
   markFolded();
-  const hands = dealHoles(race, seated.length);
-  seated.forEach((s, i) => { holes[s] = hands[i]; });
-  holeEl.innerHTML = handHTML(holes.you);
-  updateDeckCounter();
+  seated.forEach(s => { holes[s] = []; });   // bettingRound deals the opening two
   savePurse();
   renderChips();
   startClock();
