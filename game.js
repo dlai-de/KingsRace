@@ -508,7 +508,7 @@ function askAction(r) {
     const ov = document.createElement('div');
     ov.className = 'bet-dock';
     ov.innerHTML = `<span class="bet-street">Street ${r.street}</span>` +
-      `<p class="bet-ask">${p}pot ${r.pot} · stack ${purse.you}` +
+      `<p class="bet-ask">pot ${r.pot} · stack ${purse.you}` +
       `${owe ? ' · to call ' + owe : ''}</p>` +
       (sizeable ? `<label class="bet-size">Bet size <b class="bet-size-out">${r.min}</b>` +
         `<input type="range" min="${r.min}" max="${hi}" step="1" value="${r.min}" aria-label="Bet size">` +
