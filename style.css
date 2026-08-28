@@ -553,8 +553,28 @@ h1{
   display:flex; flex-direction:column; align-items:center;
 }
 .rules-card h2{ font-family:'Card Characters','Cinzel',serif; color:var(--gold-bright); margin:0 0 .8em; font-size:1.35rem; }
-.rules-card ul{ margin:0 0 1.3em; padding-left:1.1em; display:flex; flex-direction:column; gap:.55em; align-self:stretch; }
-.rules-card li{ font-size:.92rem; line-height:1.4; }
+/* one slide per screen, snapped -- swipe on touch, arrows on desktop */
+.rules-slides{
+  align-self:stretch; display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
+  scrollbar-width:none; scroll-behavior:smooth;
+}
+.rules-slides::-webkit-scrollbar{ display:none; }
+.rules-slides section{
+  flex:0 0 100%; scroll-snap-align:center; min-height:250px;
+  display:flex; flex-direction:column; justify-content:center; gap:.7em;
+}
+.rules-slides h3{
+  margin:0; font-family:'Card Characters','Cinzel',serif; color:var(--gold-bright);
+  font-size:1rem; letter-spacing:.04em;
+}
+.rules-slides p{ margin:0; font-size:.92rem; line-height:1.45; }
+.rules-slides .eg{
+  font-size:.85rem; color:var(--gold); padding-left:.7em;
+  border-left:2px solid rgba(212,175,106,.45);
+}
+.rules-slides .eg .r{ color:#d9534f; }
+.rules-nav{ display:flex; align-items:center; gap:10px; margin-top:1.3em; }
+.rules-nav .btn-ghost{ padding:.3em .8em; font-size:1.1rem; line-height:1; }
 
 @media (max-width:900px){
   #board{ aspect-ratio:9/16; }

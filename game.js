@@ -848,6 +848,10 @@ rulesBtn.addEventListener('click', () => {
   }
   rulesPanel.classList.remove('hidden');
 });
+const rulesSlides = document.getElementById('rules-slides');
+const slide = dir => rulesSlides.scrollBy({ left: dir * rulesSlides.clientWidth, behavior: 'smooth' });
+document.getElementById('rules-prev').addEventListener('click', () => slide(-1));
+document.getElementById('rules-next').addEventListener('click', () => slide(1));
 document.getElementById('rules-close').addEventListener('click', () => {
   rulesPanel.classList.add('hidden');
   if (pausedByRules) { resumeGame(); pausedByRules = false; }

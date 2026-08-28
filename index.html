@@ -186,23 +186,58 @@
 <div id="rules-panel" class="hidden">
   <div class="rules-card">
     <h2>How to Play</h2>
-    <ul>
-      <li>Each player gets one King. Play against the computer, or name up to 4 friends and let the cards decide between you.</li>
-      <li>The four Kings race up the board, one column each. First one to the top row wins.</li>
-      <li>Cards come off the deck one at a time. The card's suit tells you which King moves: a Heart moves the King of Hearts up one row, and so on.</li>
-      <li>Every row has one face-down card. Once all four Kings are past that row, it flips over: an Ace pushes that suit's King up one more row, a Joker knocks both Kings of that colour back one row.</li>
-      <li>If the deck runs out first, whoever is furthest up wins.</li>
-      <li>Press <b>Odds</b> at any time to see each King's chance of winning from here.</li>
-      <li><b>Against the computer you also bet chips</b>, poker style, on your own King.</li>
-      <li>Two players pay the <b>blinds</b> (a forced small and big bet) before each hand. The turn to pay moves round the table every hand, and the blinds double every 2 minutes of play — the clock stops when you pause. Run out of chips for the big blind and you're out.</li>
-      <li>You get 2 <b>hole cards</b> at the start and 1 more before each later betting round. They only show you what is <em>not</em> coming: a card in your hand can never move a King, so it is one advance that suit will never get. Yours are secret.</li>
-      <li>There are four rounds of betting: before the race starts, then after the 2nd, 4th and 6th face-down card flips.</li>
-      <li>On your turn you can check, bet, call, raise (3 raises per round) or fold. The blinds count as a bet already made, so folding is allowed right from the first round.</li>
-      <li>Use the <b>Bet size</b> slider to choose how much to bet or raise, from the minimum up to the round's limit or all your chips. A raise must be at least as big as the raise before it.</li>
-      <li><b>All in</b> puts your last chips in and keeps you in the hand. You can only win as much from each rider as you put in yourself; the rest goes to the next King home.</li>
-      <li>Fold and your King keeps racing but can no longer win — the race runs on until a King still in the pot gets home, and that King's owner takes the pot.</li>
-    </ul>
-    <button id="rules-close" class="pause-btn">Close</button>
+    <!-- ponytail: native scroll-snap slider -- the arrows just scroll it, no carousel state -->
+    <div class="rules-slides" id="rules-slides">
+      <section>
+        <h3>The race</h3>
+        <p>Four Kings climb four columns. The first King to reach the top row wins.</p>
+        <p>Each player rides one King: play against the computer, or name up to 4 friends and let the cards decide between you.</p>
+      </section>
+      <section>
+        <h3>Cards move Kings</h3>
+        <p>Cards come off the deck one at a time. The suit says who moves — and a King only ever moves in its own column.</p>
+        <p class="eg">9<span class="r">♦</span> is drawn → the King of Diamonds climbs one row. Nobody else moves.</p>
+      </section>
+      <section>
+        <h3>The hidden row cards</h3>
+        <p>Every row holds one face-down card. It flips as soon as all four Kings are past that row.</p>
+        <p class="eg">A♠ flips → the King of Spades climbs one extra row.</p>
+        <p class="eg">A Joker flips → both Kings of that colour drop one row.</p>
+      </section>
+      <section>
+        <h3>Winning</h3>
+        <p>Top row first, and it's over. If the deck runs out before anyone gets there, whoever is furthest up wins.</p>
+        <p>Press <b>Odds</b> any time to see each King's chance of winning from where they stand.</p>
+      </section>
+      <section>
+        <h3>Chips and blinds</h3>
+        <p>Against the computer you also bet chips on your own King, poker style. Two seats pay the forced bets — the small and big <b>blind</b> — before every hand, and that duty moves one seat round the table each hand.</p>
+        <p class="eg">Blinds 5/10: one seat puts in 5, the next puts in 10, before a single card is dealt.</p>
+        <p>The blinds double every 2 minutes of play (the clock stops while you're paused). Can't cover the big blind, and you're out.</p>
+      </section>
+      <section>
+        <h3>Your hole cards</h3>
+        <p>You get 2 secret cards at the start and 1 more before each later betting round. They never race — they show you what <em>isn't</em> coming.</p>
+        <p class="eg">You hold K<span class="r">♥</span> 4<span class="r">♥</span> → two Heart cards that can never be drawn, so the King of Hearts has two fewer climbs left in the deck.</p>
+      </section>
+      <section>
+        <h3>The betting rounds</h3>
+        <p>Four of them: before the race starts, then after the 2nd, 4th and 6th hidden card flips.</p>
+        <p>On your turn: check, bet, call, raise (3 raises per round) or fold. The blinds already count as a bet, so you may fold straight away in the first round.</p>
+        <p class="eg">Blinds are 5/10 and you raise to 20. A rider makes it 30 — you can fold, call the 30, or raise again.</p>
+      </section>
+      <section>
+        <h3>Bet size, all in, folding</h3>
+        <p>The <b>Bet size</b> slider picks how much you bet or raise, from the minimum up to the round's limit or your last chip. A raise is never smaller than the raise it answers.</p>
+        <p><b>All in</b> keeps you in the hand with your last chips. You can only win from each rider as much as you put in yourself — the rest goes to the next King home.</p>
+        <p>Fold and your King keeps racing but can no longer win: the race runs on until a King still in the pot gets home, and its rider takes the pot.</p>
+      </section>
+    </div>
+    <div class="rules-nav">
+      <button class="pause-btn btn-ghost" id="rules-prev" aria-label="Previous">‹</button>
+      <button id="rules-close" class="pause-btn">Close</button>
+      <button class="pause-btn btn-ghost" id="rules-next" aria-label="Next">›</button>
+    </div>
   </div>
 </div>
 
