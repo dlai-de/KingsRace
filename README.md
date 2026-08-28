@@ -17,12 +17,13 @@ A card-based horse race game, played entirely with a deck of playing cards on an
 - **Vs Computer** — pick your King; three AI riders take the other three, and you play poker over the race.
 - **Play with Friends** — name up to 4 riders, one per suit, and race together on the same screen (no betting).
 
-From the victory screen you can start a **New Race** (same mode and setup) or **Change Mode** to set up a different one.
+From the victory screen, **Continue** deals the next hand with the stacks as they stand, and **Quit** throws the run away and starts over with everyone back on a full buy-in. Closing the tab in the middle of a hand voids that hand — the stacks come back exactly as they were when it was dealt, and the blind clock picks up where it left off.
 
 ## Features
 
 - Fully automatic race with a shuffle animation and a countdown.
-- **Vs Computer is a 4-handed poker table**: everyone gets 2 private hole cards — dead cards that never race, so they quietly slow their own suit — then four fixed-limit betting rounds as the bonus cards flip. Fold and your King races on, but it can no longer win the pot.
+- **Vs Computer is a 4-handed poker table**: everyone gets 2 private hole cards — dead cards that never race, so they quietly slow their own suit — then a betting round before every bonus card is turned over, up to four — you bet blind on what that card will be, and set your own size on a slider, from one small bet up to the street's limit. Fold and your King races on, but it can no longer win the pot.
+- **Blinds, not an ante**: the two seats left of a rotating button post a small and big blind, so the opening round already has a live bet — you can fold before a card is drawn. The blinds climb every 2 minutes of play (5/10 → 10/20 → 20/40 → 40/80, and the bet sizes climb with them); the clock stops while the game is paused. A seat that can no longer cover the big blind is out.
 - Optional **Odds** readout: a Monte Carlo win chance per King, priced from what you alone can see.
 - Pause/Resume at any time; the in-game rules panel (bottom-right) pauses the race automatically while open.
 - A deck pile that visibly thins out and a discard pile that grows as the game progresses.

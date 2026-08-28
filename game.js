@@ -2,7 +2,6 @@
 
 // ---------- Constants ----------
 // SUITS, SUIT_COLOR, RANKS, ROWS and the rules themselves come from race.js.
-const SUIT_SYMBOL = { S: '♠', D: '♦', C: '♣', H: '♥' };
 const SUIT_GLYPH = { S: '}', D: '[', C: ']', H: '{' }; // pip glyphs in the "Card Characters" font
 const SUIT_NAME = { S: 'Spades', D: 'Diamonds', C: 'Clubs', H: 'Hearts' };
 const SUIT_COL = { S: 0, D: 1, C: 2, H: 3 };
@@ -34,6 +33,7 @@ const oddsBtn = document.getElementById('odds-btn');
 const chipsEl = document.getElementById('chips');
 const victoryChipsEl = document.getElementById('victory-chips');
 const holeEl = document.getElementById('hole-cards');
+const betlogEl = document.getElementById('betlog');
 
 // ---------- Pausable delay ----------
 // ponytail: --spd in style.css is the single pacing knob -- it scales every CSS
@@ -76,7 +76,7 @@ let kingEls = {}, bonusEls = {};
 // Vs Computer is a 4-handed table: you plus three AI seats, one King each.
 const SEAT_NAME = { you: 'You', a1: 'AI 1', a2: 'AI 2', a3: 'AI 3' };
 const SEAT_TAG = { you: 'YOU', a1: 'AI 1', a2: 'AI 2', a3: 'AI 3' };
-let seatSuit = {}, suitSeat = {}, holes = {}, live = [], pot = 0, street = 0;
+let seatSuit = {}, suitSeat = {}, holes = {}, seated = [], live = [], pot = 0, street = 0;
 let epoch = 0;   // bumped per race, so a replay can't leave the previous loop still stepping
 
 function newGame() {
@@ -85,7 +85,7 @@ function newGame() {
   gameOver = false;
   paused = false;
   fastForward = false;
-  live = []; holes = {}; pot = 0; street = 0;
+  seated = []; live = []; holes = {}; pot = 0; street = 0;
   holeEl.innerHTML = '';
   pauseBtn.disabled = false;
 }
@@ -248,13 +248,22 @@ async function gameLoop() {
   const mine = epoch;
   updateOdds();
   while (!gameOver && epoch === mine) {
+    // The table as it stood before this card. A street opens with the bonus card still
+    // face down, so that snapshot -- not the mutated state -- is what the round is priced
+    // off, or the AI would be betting on a card nobody has seen yet.
+    // ponytail: taken before the draw, so it is one advance stale -- the very card on
+    // screen. Replaying the batch event by event to close that gap costs more than the
+    // one row of drift is worth.
+    const preDraw = structuredClone(race);
     for (const e of stepRace(race)) {
       if (gameOver || epoch !== mine) return;
+      if (e.type === 'reveal' && mode === 'computer' && street && street < 4) {
+        betView = preDraw;
+        await bettingRound(street + 1);
+        betView = null;
+        if (gameOver || epoch !== mine) return;
+      }
       await renderEvent(e);
-    }
-    if (!gameOver && mode === 'computer' && street && street < 4 && race.revealed.size >= STREET_AT[street]) {
-      await bettingRound(street + 1);
-      if (epoch !== mine) return;
     }
     updateOdds();
     await sleep(250);
@@ -271,7 +280,8 @@ async function win(suit, photoFinish) {
 
 function showVictory(suit, photoFinish) {
   kingEls[suit].classList.remove('winner');
-  victoryWinnerEl.innerHTML = `<div class="pc-front ${SUIT_COLOR[suit]}">${cardInnerHTML('K', SUIT_GLYPH[suit], SUIT_COLOR[suit])}</div>`;
+  victoryWinnerEl.innerHTML = `<div class="pc-front ${SUIT_COLOR[suit]}">${cardInnerHTML('K', SUIT_GLYPH[suit], SUIT_COLOR[suit])}</div>`
+    + (window.seatFace?.(suit) ?? '');   // the rider that took it home, on the card's corner
   if (mode === 'computer') {
     if (suit === playerSuit) {
       victoryTitleEl.textContent = 'You Win!';
@@ -295,7 +305,7 @@ function showVictory(suit, photoFinish) {
     victorySubtitleEl.textContent =
       `The deck ran out \u2014 the ${SUIT_NAME[suit]} King was furthest ahead. Photo finish!`;
   }
-  bustCheck();
+  endRun();
   screenVictory.classList.remove('hidden');
 }
 
@@ -315,29 +325,80 @@ function setRiderLabels() {
   SUITS.forEach(suit => {
     const label = mode === 'computer' ? SEAT_TAG[suitSeat[suit]] : (riderNames[suit] || '');
     const el = document.getElementById('label-' + suit);
-    el.textContent = label;
-    el.appendChild(document.createElement('i')).className = 'odds';
-    el.appendChild(document.createElement('i')).className = 'stake';
+    el.innerHTML = '<i class="chips"></i><b class="tag"></b><i class="odds"></i><i class="stake"></i><i class="said"></i>';
+    el.querySelector('.tag').textContent = label;   // friends-mode names are user input
+    el.classList.toggle('you', mode === 'computer' && suit === playerSuit);
   });
+  window.paintSeatFaces?.();   // faces.js stamps each seat's character back onto its plaque
   renderStakes();
 }
 
 // ---------- Chips, hole cards and the betting rounds ----------
-// Bankroll survives reloads; so does the live pot, which is parked in `carry` for the
-// duration of a race so quitting mid-hand rides it over instead of burning it.
+// Bankroll survives reloads. Chips only ever reach storage at a hand boundary: the
+// stacks as they were before the blinds went in, or as they are once the pot is paid.
+// `commit` is that boundary; the blind clock rides along live, since it is not a chip.
+//
+// Mid-hand is not a state worth keeping. The stacks are already down while the pot is
+// still in flight, so a blob written then does not add back up to the stake and loadPurse
+// throws the entire run away -- close the tab during a betting round and the table came
+// back either wiped to fresh buy-ins or stuck on the half-played stacks.
+// ponytail: so a tab closed mid-hand voids that hand instead of burning the chips into a
+// dead pot. That is refundable-by-quitting, which is only cheatable against yourself;
+// move `commit` to just after the blinds if a real opponent ever shows up.
 const PURSE_KEY = 'kr-purse';
-let purse = { carry: 0, ...Object.fromEntries(SEATS.map(s => [s, BUYIN])) };
-try {
-  const saved = JSON.parse(localStorage.getItem(PURSE_KEY));
-  for (const k of [...SEATS, 'carry']) if (typeof saved?.[k] === 'number') purse[k] = saved[k];
-} catch { /* corrupt blob, or an older two-seat purse: start fresh */ }
+let saved = null;
+try { saved = JSON.parse(localStorage.getItem(PURSE_KEY)); } catch { /* corrupt blob, or no storage */ }
+const purse = loadPurse(saved);   // bets.js decides: a purse restores whole or not at all
+let commit = { ...purse };
 
 function savePurse() {
-  try { localStorage.setItem(PURSE_KEY, JSON.stringify(purse)); } catch { /* private mode */ }
+  try { localStorage.setItem(PURSE_KEY, JSON.stringify(purseBlob(commit, purse))); } catch { /* private mode */ }
 }
+// Drop the run. Next load has nothing to restore, so loadPurse deals a fresh table.
+function dropPurse() {
+  try { localStorage.removeItem(PURSE_KEY); } catch { /* private mode */ }
+}
+// A run only carries on through Continue. Coming in off the mode screen is a new table:
+// level stacks, blinds back to level 1, clock back to zero -- a reload mid-hand used to
+// restore the old purse and then start the "new" game on it.
+// ponytail: clockStarted is deliberately left alone -- it only guards against a second
+// setInterval, and the one already running reads purse.ms, which is now zero again.
+function resetPurse() {
+  Object.assign(purse, loadPurse(null));
+  commit = { ...purse };
+  handStart = {};
+  savePurse();
+}
+// The blind timer runs on real playing time only: it stops for the pause overlay, the
+// rules panel and the victory screen, so the blinds cannot climb while nobody is racing.
+// ponytail: one interval reading its own elapsed time -- setInterval drifts, and over a
+// few levels that drift is worth more than the two lines it costs to not have it.
+let clockStarted = 0;
+function startClock() {
+  if (clockStarted) return;
+  clockStarted = performance.now();
+  let last = clockStarted;
+  setInterval(() => {
+    const now = performance.now();
+    const dt = Math.round(now - last);
+    last = now;
+    if (paused || gameOver || mode !== 'computer' || screenRace.classList.contains('hidden')) return;
+    purse.ms += dt;
+    savePurse();
+    renderChips();
+  }, 1000);
+}
+
+const mmss = ms => { const s = Math.ceil(ms / 1000); return `${(s / 60) | 0}:${String(s % 60).padStart(2, '0')}`; };
+
 function renderChips() {
   chipsEl.classList.toggle('hidden', mode !== 'computer');
-  chipsEl.textContent = `Bank ${purse.you} · Pot ${pot}`;
+  // The hand is played at the level frozen when it opened, so once the clock has run past
+  // that the countdown is over and the new blinds are waiting on the next deal.
+  const bb = purse.bb || bigBlind(purse.ms);
+  const left = bigBlind(purse.ms) !== bb ? 0 : levelLeft(purse.ms);
+  chipsEl.innerHTML = `Bank ${purse.you} · Pot ${pot}<br>` +
+    `Blinds ${bb / 2}/${bb} · ${left === Infinity ? 'top level' : left ? 'up in ' + mmss(left) : 'up next hand'}`;
   renderStakes();
 }
 
@@ -345,13 +406,24 @@ function renderChips() {
 // committed is just what the stack has lost since the hand opened -- no per-street
 // bookkeeping to keep in sync.
 let handStart = {};
+// What a seat has put in this hand: just what its stack has lost since the hand opened.
+const staked = s => Math.max(0, (handStart[s] ?? purse[s]) - purse[s]);
+// ponytail: at most 6 discs in front of a seat -- the exact figure is spelled out
+// underneath anyway, so a deep stake reads as "a lot" rather than sprawling sideways.
+const chipsHTML = n => chipSplit(n).slice(0, 6).map(v => `<i class="chip c${v}"></i>`).join('');
+
 function renderStakes() {
   if (mode !== 'computer' || !seatSuit.you) return;
   SEATS.forEach(s => {
-    const el = document.querySelector('#label-' + seatSuit[s] + ' .stake');
+    const el = document.getElementById('label-' + seatSuit[s]);
     if (!el) return;
-    el.textContent = live.length && !live.includes(s) ? 'folded'
-      : `${purse[s]} · in ${Math.max(0, (handStart[s] ?? purse[s]) - purse[s])}`;
+    const out = seated.length && !seated.includes(s);
+    const folded = !out && live.length && !live.includes(s);
+    const committed = staked(s);
+    // Folded chips have been pushed into the pot -- the seat's square is empty again.
+    el.querySelector('.chips').innerHTML = out || folded ? '' : chipsHTML(committed);
+    el.querySelector('.stake').textContent =
+      out ? 'out' : folded ? 'folded' : `${purse[s]} · in ${committed}`;
   });
 }
 
@@ -362,13 +434,15 @@ function assignSeats() {
   SEATS.forEach(s => { suitSeat[seatSuit[s]] = s; });
 }
 
-const cardText = c => `${c.rank}${SUIT_SYMBOL[c.suit]}`;
 const handHTML = cards => cards.map(c =>
   `<div class="pc-front ${SUIT_COLOR[c.suit]}">${cardInnerHTML(c.rank, SUIT_GLYPH[c.suit], SUIT_COLOR[c.suit])}</div>`).join('');
 
 // What a seat can see: the public race, plus the knowledge that six cards it cannot
 // name are dead. race.js puts those back in the pool and deals that many fewer.
-const seatView = seat => ({ ...race, hidden: SEATS.filter(s => s !== seat).flatMap(s => holes[s]) });
+// `betView` is set while a street is being bet ahead of a bonus card: everyone prices
+// the hand off the board as it was before that card flipped.
+let betView = null;
+const seatView = seat => ({ ...(betView || race), hidden: seated.filter(s => s !== seat).flatMap(s => holes[s]) });
 
 function markFolded() {
   SEATS.forEach(s => kingEls[seatSuit[s]]?.classList.toggle('folded', !live.includes(s)));
@@ -377,8 +451,17 @@ function markFolded() {
 function askAction(r) {
   return new Promise(resolve => {
     const owe = r.bet - r.in.you;
-    const label = { fold: 'Fold', check: 'Check', call: `Call ${owe}`,
-                    bet: `Bet ${r.size}`, raise: `Raise to ${r.bet + r.size}` };
+    const opts = legal(r, purse, 'you');
+    const label = (o, n) => ({ fold: 'Fold', check: 'Check',
+                               call: `Call ${Math.min(owe, purse.you)}${owe >= purse.you ? ' all in' : ''}`,
+                               bet: `Bet ${n}`, raise: `Raise to ${r.bet + n}` })[o];
+    // How far you may slide it: never past the street's cap (bets.js keeps that where a
+    // fully capped fixed-limit street already was) and never past your own stack -- the
+    // top of the slider is your all-in.
+    // ponytail: a native <input type="range"> -- no stepper, no chip-count buttons, and
+    // it comes keyboard-accessible for free.
+    const hi = Math.min(r.cap - r.bet, purse.you - owe);
+    const sizeable = hi > r.min && (opts.includes('bet') || opts.includes('raise'));
     // The Handicapper is opt-in, so only price the hand when it's switched on.
     const p = showOdds ? Math.round(odds(seatView('you'), 800)[playerSuit] * 100) + '% to win · ' : '';
     const ov = document.createElement('div');
@@ -387,42 +470,104 @@ function askAction(r) {
       `<div class="hole-cards">${handHTML(holes.you)}</div>` +
       `<p class="paused-sub">${p}pot ${r.pot} · your stack ${purse.you}` +
       `${owe ? ' · to call ' + owe : ''}</p>` +
+      (sizeable ? `<label class="bet-size">Bet size <b class="bet-size-out">${r.min}</b>` +
+        `<input type="range" min="${r.min}" max="${hi}" step="1" value="${r.min}" aria-label="Bet size">` +
+        `</label>` : '') +
       `<div class="btn-row">` +
-      legal(r, purse, 'you').map(o => `<button class="btn-ghost" data-act="${o}">${label[o]}</button>`).join('') +
+      opts.map(o => `<button class="btn-ghost" data-act="${o}">${label(o, r.min)}</button>`).join('') +
       `</div></div>`;
     screenRace.appendChild(ov);
+    const slider = ov.querySelector('.bet-size input');
+    slider?.addEventListener('input', () => {
+      ov.querySelector('.bet-size-out').textContent = slider.value;
+      ['bet', 'raise'].forEach(o => {
+        const b = ov.querySelector(`[data-act="${o}"]`);
+        if (b) b.textContent = label(o, +slider.value);
+      });
+    });
     ov.addEventListener('click', e => {
       const btn = e.target.closest('[data-act]');
       if (!btn) return;
       ov.remove();
-      resolve(act(purse, r, 'you', btn.dataset.act));
+      resolve(act(purse, r, 'you', btn.dataset.act, +(slider?.value ?? r.min)));
     });
   });
 }
+
+// An AI decides in a few ms, so the pacing is all sleeps: THINK is how long a seat
+// deliberates, BEAT is how long its action holds the plaque before the next seat speaks.
+// ponytail: two numbers, not a pacing engine -- --spd in style.css scales both along with
+// every other sleep in the race, so the betting can never drift out of step with the cards.
+const THINK = 600, BEAT = 550;
 
 // ponytail: 500 runs inline rather than through the worker -- the race is stopped for
 // the betting round anyway, so a few ms of main thread beats a request/reply protocol.
 async function aiTurn(r, seat) {
   const p = odds(seatView(seat), 500)[seatSuit[seat]];
-  await sleep(450);
+  await sleep(THINK);
   return act(purse, r, seat, aiAction(p, r, purse, seat));
 }
 
-const STREET_AT = [0, 2, 4, 6];   // the revealed-row count that opens streets 1..4
+// Whose turn it is, and what the last seat did: without a marker and a line that
+// lingers, the whole street is a silent flicker.
+const said = suit => document.querySelector('#label-' + suit + ' .said');
+function setTurn(seat) {
+  SUITS.forEach(su => document.getElementById('label-' + su).classList.toggle('acting', seat && su === seatSuit[seat]));
+}
+const actionText = m => (m.action === 'bet' ? 'bets ' + m.to
+  : m.action === 'raise' ? 'raises to ' + m.to
+  : m.action === 'call' ? 'calls ' + m.amount
+  : m.action) + (m.allin && m.action !== 'fold' ? ' all in' : '');
+function showAction(m) {
+  const el = said(seatSuit[m.seat]);
+  if (!el) return;
+  el.textContent = actionText(m);
+  el.classList.toggle('fold', m.action === 'fold');
+}
 
-async function bettingRound(n) {
+// How long the log stays up after the last chip moved. Scaled by SPEED like every
+// other bit of pacing, so slowing the race down leaves it readable for just as long.
+const LOG_QUIET = 5000;
+let fadeTimer;
+
+// The chip log: only moves that cost chips get a line. Checks and folds are on the
+// rider plaques, and repeating them here would bury the money under the talk.
+function logBet(seat, text) {
+  const li = document.createElement('li');
+  if (seat === 'you') li.className = 'you';
+  // Every verb here is third person, and "You calls 20" reads like a typo: drop the s.
+  li.textContent = `${SEAT_NAME[seat]} ${seat === 'you' ? text.replace(/^(\w+)s\b/, '$1') : text}`;
+  betlogEl.append(li);
+  // The log is only interesting while the chips are moving: it fades itself out once
+  // the table goes quiet, and the next line brings it straight back.
+  betlogEl.classList.remove('faded');
+  clearTimeout(fadeTimer);
+  fadeTimer = setTimeout(() => betlogEl.classList.add('faded'), LOG_QUIET * SPEED);
+}
+
+async function bettingRound(n, blinds = {}) {
   street = n;
   if (live.length < 2) return;
-  const r = newRound(purse, live, n, pot);
-  if (!r.size) return;            // nobody can cover a bet; the street checks around
+  const r = newRound(purse, live, n, pot, purse.hand, blinds);
+  SUITS.forEach(su => { said(su).textContent = ''; });   // last street's talk is stale
+  betlogEl.innerHTML = '';                                // and so are its chips
+  Object.entries(blinds).forEach(([s, amt]) => {
+    said(seatSuit[s]).textContent = 'blind ' + amt;
+    logBet(s, `posts ${amt}`);
+  });
   for (let seat; (seat = actor(r));) {
-    if (seat === 'you') await askAction(r);
-    else await aiTurn(r, seat);
+    setTurn(seat);
+    const m = seat === 'you' ? await askAction(r) : await aiTurn(r, seat);
+    showAction(m);
+    if (m.amount) logBet(m.seat, actionText(m));
     live = r.live;
-    renderStakes();
+    pot = r.pot;                  // keep the pot readout honest between turns
+    renderChips();
     markFolded();
-    if (gameOver) return;
+    if (gameOver) return setTurn(null);
+    await sleep(BEAT);            // your own chips have to land too, not just theirs
   }
+  setTurn(null);
   live = r.live;
   race.contenders = live.map(s => seatSuit[s]);   // folded Kings race on, but can't win
   pot = r.pot;
@@ -430,6 +575,7 @@ async function bettingRound(n) {
   savePurse();
   renderChips();
   markFolded();
+  await sleep(BEAT);              // the closed street reads before the deck starts again
   if (live.length === 1) {
     fastForward = true;
   }
@@ -437,27 +583,34 @@ async function bettingRound(n) {
 
 async function openTable() {
   holeEl.classList.toggle('hidden', mode !== 'computer');
+  betlogEl.classList.toggle('hidden', mode !== 'computer');
+  betlogEl.innerHTML = '';
   if (mode !== 'computer') { renderChips(); return true; }
-  restake(purse);
-  if (purse.you < ANTE) {
+  seated = alive(purse);
+  if (seated.length < 2 || !seated.includes('you')) {
     renderChips();
     victoryWinnerEl.innerHTML = '';
     victoryChipsEl.textContent = '';
-    bustCheck();
+    endRun();
     screenVictory.classList.remove('hidden');
     return false;
   }
-  handStart = { ...purse };
-  pot = openPot(purse);
+  handStart = commit = { ...purse };   // the hand opens here, and this is what gets stored
+  purse.hand++;                      // the button moves one seat; bettingRound deals the order
+  const opened = openPot(purse, seated, purse.hand);
+  pot = opened.pot;
   purse.carry = pot;
-  live = [...SEATS];
-  const hands = dealHoles(race, SEATS.length);
-  SEATS.forEach((s, i) => { holes[s] = hands[i]; });
+  live = [...seated];
+  race.contenders = live.map(s => seatSuit[s]);   // eliminated Kings race, but can't win
+  markFolded();
+  const hands = dealHoles(race, seated.length);
+  seated.forEach((s, i) => { holes[s] = hands[i]; });
   holeEl.innerHTML = handHTML(holes.you);
   updateDeckCounter();
   savePurse();
   renderChips();
-  await bettingRound(1);
+  startClock();
+  await bettingRound(1, opened.blinds);
   return true;
 }
 
@@ -466,27 +619,46 @@ async function openTable() {
 function settlePot(winSuit) {
   if (mode !== 'computer') return '';
   const seat = suitSeat[winSuit];
-  purse.carry = 0;   // unpark: awardPot decides whether it pays out or rides on
-  awardPot(purse, pot, seat);
-  const won = pot;
+  // Everyone's stake this hand, and the finish order of the riders still in the pot:
+  // awardPot needs both to know how much of it the winner actually covered.
+  const paid = Object.fromEntries(SEATS.map(s => [s, staked(s)]));
+  const order = rankSuits(race, race.contenders).map(su => suitSeat[su]);
+  const before = { ...purse };
+  const total = pot;
+  awardPot(purse, pot, order, paid);
+  const won = s => purse[s] - before[s];
   pot = 0;
+  commit = { ...purse };   // the pot is paid: a new boundary to store
   savePurse();
   renderChips();
-  const showdown = SEATS.map(s => `${SEAT_NAME[s]} ${holes[s].map(cardText).join(' ')}`).join(' \u00b7 ');
-  return (seat === 'you' ? `You take the ${won}-chip pot.` : `${SEAT_NAME[seat]} takes the ${won}-chip pot.`) +
-    ` Your bank: ${purse.you}. \u2014 Hole cards: ${showdown}`;
+  // ponytail: no showdown. Nobody's hole cards are ever revealed -- yours were the
+  // only honest read on the race, and folded seats keep their bluffs.
+  // With an all-in in the hand the pot pays out in more than one piece, so log every
+  // seat that got a share -- the winner's line alone would not add up to the pot.
+  order.filter(won).forEach(s => logBet(s, `takes ${won(s)} of the ${total}-chip pot`));
+  const share = `${won(seat)} of the ${total}-chip pot`;
+  return (seat === 'you' ? `You take ${share}.` : `${SEAT_NAME[seat]} takes ${share}.`) +
+    ` Your bank: ${purse.you}.`;
 }
 
-// Out of chips: the AI seats get re-staked, you don't. Nothing left to ante with is
-// the end of the run -- there is no New Race from here, only Change Mode.
+// Nobody is re-staked, so a run ends one of two ways: you cannot post the big blind, or nobody else
+// can. Either way it is over -- there is no Continue from here, only Quit.
 const replayBtn = document.getElementById('replay-btn');
-function bustCheck() {
-  if (mode !== 'computer' || purse.you >= ANTE) return false;
+function endRun() {
+  if (mode !== 'computer') return false;
+  const left = alive(purse);
+  const broke = !left.includes('you');
+  if (!broke && left.length > 1) return false;
   gameOver = true;
+  // The run is over: drop the dead purse so a reload deals a fresh table instead of
+  // restoring the same busted stacks and showing this screen again forever.
+  dropPurse();
   pauseBtn.disabled = true;
-  victoryTitleEl.textContent = 'You Lose';
-  victorySubtitleEl.textContent =
-    `You are out of chips \u2014 you cannot cover the ${ANTE}-chip ante. The table plays on without you.`;
+  victoryTitleEl.textContent = broke ? 'You Lose' : 'You Win the Table';
+  const gone = SEATS.filter(x => x !== 'you' && !left.includes(x)).map(x => SEAT_NAME[x]);
+  victorySubtitleEl.textContent = broke
+    ? `You are out of chips \u2014 you cannot cover the ${bigBlind(purse.ms)}-chip big blind. The table plays on without you.`
+    : `${gone.join(', ')} are out of chips. Every chip on the table is yours.`;
   if (!victoryChipsEl.textContent) victoryChipsEl.textContent = `Bank ${purse.you}.`;
   replayBtn.classList.add('hidden');
   return true;
@@ -549,6 +721,8 @@ function chooseKing(suit) {
 
 function chooseMode(m) {
   mode = m;
+  resetPurse();   // both chooseKing and startFriendsRace are only reachable through here
+
   screenMode.classList.add('hidden');
   screenSelect.classList.remove('hidden');
   const nameInputs = document.querySelectorAll('.name-input');
@@ -626,7 +800,10 @@ replayBtn.addEventListener('click', () => {
   newGame();
   startRace();
 });
-document.getElementById('change-mode-btn').addEventListener('click', () => location.reload());
+document.getElementById('quit-btn').addEventListener('click', () => {
+  dropPurse();          // Continue rides the same stacks; Quit is the only way to reset them
+  location.reload();
+});
 
 const rulesBtn = document.getElementById('rules-btn');
 const rulesPanel = document.getElementById('rules-panel');

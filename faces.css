@@ -1,0 +1,28 @@
+/* Seat characters: the medallion each King's rider keeps on its plaque for the run.
+   Loaded after style.css, so the one override below wins on source order alone --
+   nothing in style.css has to move. */
+
+/* The plaques grew a medallion, so the strip reserved for them under the grid grows too. */
+.board-wrap{ padding-bottom:156px; }
+
+.seat-face{
+  display:block; width:34px; height:34px; margin:0 auto 3px;
+  border-radius:50%; overflow:hidden;
+  border:1px solid rgba(212,175,106,.5);
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(255,255,255,.10), transparent 60%),
+    linear-gradient(160deg, var(--felt-1), var(--felt-2));
+  box-shadow:inset 0 0 8px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.45);
+}
+.seat-face svg{ display:block; width:100%; height:100%; }
+.rider-label.you .seat-face{ border-color:rgba(243,217,154,.8); }
+.rider-label.acting .seat-face{
+  border-color:var(--gold-bright);
+  box-shadow:inset 0 0 8px rgba(0,0,0,.4), 0 0 12px rgba(243,217,154,.45);
+}
+
+/* Same medallion on the King picker, sized to the card it sits over. */
+.pick-card .seat-face{ width:54px; height:54px; margin:0; }
+
+/* The winning King's rider, pinned to the corner of the card on the victory screen. */
+.victory-winner .seat-face{ position:absolute; right:-14px; bottom:-10px; width:46px; height:46px; margin:0; }

@@ -87,7 +87,8 @@ h1{
   display:flex; flex-direction:column; align-items:center; gap:.6em; text-align:center;
   transition:transform .25s ease, box-shadow .25s ease;
 }
-.mode-card:hover{ transform:translateY(-8px) scale(1.03); box-shadow:0 18px 34px rgba(212,175,106,.35); }
+.mode-card:enabled:hover{ transform:translateY(-8px) scale(1.03); box-shadow:0 18px 34px rgba(212,175,106,.35); }
+.mode-card:disabled{ cursor:not-allowed; opacity:.45; filter:grayscale(.6); }
 .mode-icon{ width:46px; height:46px; filter:invert(1); opacity:.9; }
 .mode-title{ font-family:'Card Characters','Cinzel',serif; font-size:1.15rem; font-weight:700; color:var(--gold-bright); }
 .mode-desc{ font-size:.85rem; color:var(--ink); opacity:.75; line-height:1.4; }
@@ -147,6 +148,24 @@ h1{
   display:flex; align-items:stretch; justify-content:center; gap:20px;
 }
 
+/* ---------- chip log (fixed to the left rail, fades out between streets) ---------- */
+.betlog{
+  position:fixed; left:16px; top:50%; transform:translateY(-50%); z-index:20;
+  list-style:none; margin:0; padding:0; max-height:70vh; overflow:hidden;
+  display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+  pointer-events:none;
+  transition:opacity calc(1.2s * var(--spd)) ease;
+}
+.betlog.faded{ opacity:0; }
+.betlog li{
+  font-size:.72rem; line-height:1.3; color:var(--ink);
+  padding:4px 9px; border-radius:999px; white-space:nowrap;
+  background:rgba(255,255,255,.05); border:1px solid rgba(212,175,106,.3);
+  animation:logIn calc(.3s * var(--spd)) ease both;
+}
+.betlog li.you{ border-color:var(--gold-bright); color:var(--gold-bright); }
+@keyframes logIn{ from{ opacity:0; transform:translateX(-10px); } to{ opacity:1; transform:translateX(0); } }
+
 /* ---------- deck panel (left of board) ---------- */
 .deck-panel{
   flex:0 0 auto; width:150px;
@@ -192,6 +211,7 @@ h1{
 .flip-container .face.pc-front{ transform:rotateY(180deg); }
 
 .deck-counter{ font-size:.8rem; color:var(--muted); letter-spacing:.03em; }
+#chips{ line-height:1.6; text-align:center; }
 #odds-btn{ padding:.4em .9em; font-size:.75rem; }
 #odds-btn.on{ color:var(--felt-2); background:linear-gradient(160deg,var(--gold-bright),var(--gold)); border-color:transparent; }
 .rider-label .odds, .rider-label .stake{
@@ -260,7 +280,7 @@ h1{
   height:100%; flex:0 1 auto;
   display:flex; align-items:flex-start;
   padding-right:96px; /* reserved for the START/FINISH rails outside the grid */
-  padding-bottom:54px; /* reserved for the rider labels below the grid: tag, odds, stack */
+  padding-bottom:120px; /* reserved for the seat plaques below the grid: chips, tag, odds, stack, action */
 }
 #board{
   position:relative;
@@ -284,15 +304,62 @@ h1{
 .rail-bottom{ bottom:0; height:12.5%; }
 
 .rider-label{
-  position:absolute; top:100%; margin-top:12px; width:20%; text-align:center;
+  position:absolute; top:100%; margin-top:10px; width:19%; box-sizing:border-box;
+  padding:5px 3px 7px; text-align:center;
   font-family:'Card Characters','Cinzel',serif; font-size:.85rem; font-weight:700; letter-spacing:.1em;
   color:var(--gold-bright); opacity:.9; pointer-events:none;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  background:linear-gradient(180deg, rgba(212,175,106,.14), rgba(0,0,0,.3));
+  border:1px solid rgba(212,175,106,.3);
+  border-radius:6px 6px 22px 22px / 6px 6px 34px 34px;   /* a seat on the rail */
 }
-#label-S{ left:0%; }
-#label-D{ left:20%; }
-#label-C{ left:40%; }
-#label-H{ left:60%; }
+.rider-label.you{
+  border-color:rgba(243,217,154,.75);
+  box-shadow:0 0 0 1px rgba(243,217,154,.35), 0 6px 16px rgba(243,217,154,.18);
+}
+.rider-label .tag{ display:block; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rider-label .said{
+  display:block; font-family:'Poppins',sans-serif; font-style:normal; font-weight:600;
+  font-size:.62rem; letter-spacing:.02em; color:var(--gold-bright); min-height:.95em;
+}
+.rider-label .said.fold{ color:var(--muted); font-weight:400; }
+/* whose turn it is -- the plaque lifts off the rail while the seat decides */
+.rider-label.acting{
+  opacity:1;
+  border-color:var(--gold-bright);
+  box-shadow:0 0 0 1px rgba(243,217,154,.5), 0 0 22px rgba(243,217,154,.35);
+  background:linear-gradient(180deg, rgba(212,175,106,.3), rgba(0,0,0,.25));
+}
+
+/* Four seats bowed onto one casino arc. The board is the dealer's side, so the rail
+   below curves away from it and the middle seats sit furthest out -- a bowl, not a dome.
+   One circle, not four taste calls: it runs through the four column centres (10/30/50/70%
+   of the board, so the arc's axis is 40%, not 50%) with R = 1.73 board-widths. Each
+   plaque's tilt is the tangent at its own seat, and each offset is that circle's sagitta.
+   The signs have to agree with the dip: on a bowl the left seat leans clockwise and the
+   right one anticlockwise. They used to be the other way round, which read as a dome
+   sliced into a valley.
+   ponytail: the sagitta is px, not %, so the arc keeps its depth instead of scaling with
+   the board -- 10px is the whole visual budget. Make it a container query if the board
+   ever gets a size range worth the trouble. */
+#label-S{ left:.5%;   transform:translateY(0)    rotate(10deg); }
+#label-D{ left:20.5%; transform:translateY(10px) rotate(3.3deg); }
+#label-C{ left:40.5%; transform:translateY(10px) rotate(-3.3deg); }
+#label-H{ left:60.5%; transform:translateY(0)    rotate(-10deg); }
+
+/* ---------- chips committed this hand ---------- */
+.rider-label .chips{ display:flex; justify-content:center; align-items:center; height:15px; }
+.chip{
+  width:14px; height:14px; border-radius:50%; flex:0 0 auto; margin-left:-5px;
+  background:
+    radial-gradient(circle, var(--face) 0 42%, transparent 43%),
+    repeating-conic-gradient(var(--rim) 0 24deg, #f2ede1 24deg 30deg);
+  box-shadow:0 1px 2px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.3);
+}
+.chip:first-child{ margin-left:0; }
+.chip.c1 { --rim:#8a8f96; --face:#c9ced6; }
+.chip.c5 { --rim:#a8332b; --face:#e0574c; }
+.chip.c10{ --rim:#26527f; --face:#4a83c9; }
+.chip.c25{ --rim:#276241; --face:#409a63; }
 
 #cells{
   position:absolute; inset:8px;
@@ -370,6 +437,10 @@ h1{
 }
 .paused-box{ display:flex; flex-direction:column; align-items:center; gap:22px; }
 .paused-sub{ margin:-10px 0 0; font-size:.9rem; color:var(--muted); }
+/* pick your own bet inside the street's limit */
+.bet-size{ display:flex; align-items:center; gap:12px; font-size:.85rem; color:var(--muted); letter-spacing:.03em; }
+.bet-size b{ min-width:2.2em; text-align:right; color:var(--gold-bright); font-size:1rem; }
+.bet-size input{ width:220px; accent-color:var(--gold); cursor:pointer; }
 .paused-title{
   font-family:'Card Characters','Cinzel',serif; font-size:2.4rem; letter-spacing:.15em; color:var(--gold-bright);
   text-shadow:0 0 40px rgba(243,217,154,.5);
@@ -443,8 +514,11 @@ h1{
   box-shadow:0 8px 20px rgba(212,175,106,.4);
   transition:transform .15s ease, filter .15s ease;
 }
-.side-btn img{ width:56%; height:56%; }
+.side-btn img,.side-btn svg{ width:56%; height:56%; }
 .side-btn:hover{ transform:translateY(-2px) scale(1.05); filter:brightness(1.05); }
+.side-btn:hover .string{ animation:strum 0.9s ease-in-out infinite; }
+@keyframes strum{ 0%,100%{ d:path("M13.95 8.00C13.95 8.83 12.98 9.92 12.33 10.50C11.68 11.08 10.75 11.09 10.03 11.51C9.30 11.92 8.83 12.73 8.00 13.00C7.17 13.27 5.75 13.57 5.03 13.15C4.30 12.74 3.85 11.36 3.67 10.50C3.49 9.64 3.95 8.83 3.95 8.00C3.95 7.17 3.49 6.36 3.67 5.50C3.85 4.64 4.30 3.26 5.02 2.85C5.75 2.43 7.17 2.73 8.00 3.00C8.83 3.27 9.30 4.08 10.03 4.49C10.75 4.91 11.68 4.92 12.33 5.50C12.98 6.08 13.95 7.17 13.95 8.00Z"); } 50%{ d:path("M12.05 8.00C12.05 8.83 12.51 9.64 12.33 10.50C12.15 11.36 11.70 12.74 10.98 13.15C10.25 13.57 8.83 13.27 8.00 13.00C7.17 12.73 6.70 11.92 5.98 11.51C5.25 11.09 4.32 11.08 3.67 10.50C3.02 9.92 2.05 8.83 2.05 8.00C2.05 7.17 3.02 6.08 3.67 5.50C4.32 4.92 5.25 4.91 5.97 4.49C6.70 4.08 7.17 3.27 8.00 3.00C8.83 2.73 10.25 2.43 10.98 2.85C11.70 3.26 12.15 4.64 12.33 5.50C12.51 6.36 12.05 7.17 12.05 8.00Z"); } }
+@media (prefers-reduced-motion:reduce){ .side-btn:hover .string{ animation:none; } }
 
 #rules-panel{
   position:fixed; inset:0; z-index:80;
@@ -466,9 +540,13 @@ h1{
 
 @media (max-width:900px){
   #board{ aspect-ratio:9/16; }
-  .board-wrap{ padding-right:70px; }
+  .board-wrap{ padding-right:70px; padding-bottom:110px; }
   .rail{ font-size:.62rem; margin-left:8px; }
   .deck-panel{ width:110px; }
+  .betlog{ left:6px; }
+  .betlog li{ font-size:.62rem; padding:3px 7px; }
+  .rider-label{ font-size:.72rem; letter-spacing:.04em; }
+  .chip{ width:11px; height:11px; margin-left:-4px; }
   .flip-container{ width:78px; height:112px; }
   #countdown-number{ font-size:5rem; }
 }

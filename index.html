@@ -59,6 +59,7 @@
 <link rel="preload" href="assets/fonts/Card%20Characters/CARDC___.TTF" as="font" type="font/ttf" crossorigin/>
 <link rel="manifest" href="manifest.webmanifest"/>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="faces.css">
 </head>
 <body>
 
@@ -74,10 +75,12 @@
       <span class="mode-title">Vs Computer</span>
       <span class="mode-desc">Pick a King. Three AI riders take the rest, and the poker starts.</span>
     </button>
-    <button class="mode-card" data-mode="friends">
+    <!-- ponytail: friends mode is built and wired, just shown disabled. Drop the
+         `disabled` attribute to put it back on the menu. -->
+    <button class="mode-card" data-mode="friends" disabled>
       <img class="mode-icon" src="assets/images/group.webp" alt="">
       <span class="mode-title">Play with Friends</span>
-      <span class="mode-desc">Name up to 4 riders, one per suit.</span>
+      <span class="mode-desc">Name up to 4 riders, one per suit. Coming soon.</span>
     </button>
   </div>
 </section>
@@ -154,6 +157,9 @@
     </div>
   </div>
 
+  <!-- ponytail: chips only, pinned to the left rail. Every other beat of the race is
+       already on the board. -->
+  <ol id="betlog" class="betlog hidden"></ol>
   <div id="countdown" class="countdown hidden"><span id="countdown-number"></span></div>
 </section>
 
@@ -165,8 +171,8 @@
     <p id="victory-subtitle"></p>
     <p id="victory-chips"></p>
     <div class="btn-row">
-      <button id="replay-btn">New Race</button>
-      <button id="change-mode-btn" class="btn-ghost">Change Mode</button>
+      <button id="replay-btn">Continue</button>
+      <button id="quit-btn" class="btn-ghost">Quit</button>
     </div>
   </div>
 </div>
@@ -174,6 +180,7 @@
 <!-- SIDE LINKS -->
 <div class="side-links">
   <a class="side-btn" href="https://www.lorenzosciandra.com/" target="_blank" rel="noopener noreferrer" aria-label="Creator's website"><img src="assets/images/creator.webp" alt=""></a>
+  <a class="side-btn" href="https://github.com/dlai-de" target="_blank" rel="noopener noreferrer" aria-label="Creator's GitHub profile"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width=".7" aria-hidden="true"><path class="string" d="M13.95 8.00C13.95 8.83 12.98 9.92 12.33 10.50C11.68 11.08 10.75 11.09 10.03 11.51C9.30 11.92 8.83 12.73 8.00 13.00C7.17 13.27 5.75 13.57 5.03 13.15C4.30 12.74 3.85 11.36 3.67 10.50C3.49 9.64 3.95 8.83 3.95 8.00C3.95 7.17 3.49 6.36 3.67 5.50C3.85 4.64 4.30 3.26 5.02 2.85C5.75 2.43 7.17 2.73 8.00 3.00C8.83 3.27 9.30 4.08 10.03 4.49C10.75 4.91 11.68 4.92 12.33 5.50C12.98 6.08 13.95 7.17 13.95 8.00Z"/></svg></a>
   <a class="side-btn" href="https://www.paypal.com/ncp/payment/S8NXDYHUK3JAN" target="_blank" rel="noopener noreferrer" aria-label="Support via PayPal"><img src="assets/images/paypal.webp" alt=""></a>
 </div>
 
@@ -193,10 +200,12 @@
       <li>First King to reach the top row wins!</li>
       <li>If the deck runs out, the King furthest ahead takes it — photo finish.</li>
       <li>Hit <b>Odds</b> to see each King’s live win chance.</li>
-      <li>Vs Computer: you and three AI riders each take a King and ante up.</li>
+      <li>Vs Computer: you and three AI riders each take a King. Two seats post a <b>small</b> and <b>big blind</b>, and the button moves one seat every hand.</li>
       <li>You’re each dealt 2 <b>hole cards</b> — dead cards that never race. Yours are secret, and every one of them is an advance its suit will never get.</li>
       <li>Four betting rounds: before the start, then after the 2nd, 4th and 6th bonus card flips.</li>
-      <li>Fixed limit — check, bet, call, raise (3 max) or fold.</li>
+      <li>Check, bet, call, raise (3 max) or fold. The blinds are a live bet, so you can fold straight away on the opening round.</li>
+      <li>Slide <b>Bet size</b> to pick what you bet or raise by — from one small bet up to the street's limit (what a fully raised street would have cost).</li>
+      <li>Blinds go up every 2 minutes of play — the clock stops while you're paused. Can't cover the big blind and you're out.</li>
       <li>Fold and your King races on, but it can no longer win: it parks at the finish and the race runs until a King still in the pot gets home.</li>
       <li>The pot goes to that King's rider.</li>
     </ul>
@@ -207,5 +216,6 @@
 <script src="race.js"></script>
 <script src="bets.js"></script>
 <script src="game.js"></script>
+<script src="faces.js"></script>
 </body>
 </html>
