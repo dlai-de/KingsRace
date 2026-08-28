@@ -171,7 +171,14 @@ function aiAction(p, r, purse, seat, bluff = 0.1, runway = 2) {
   const opts = legal(r, purse, seat);
   const owe = r.bet - r.in[seat];
   const cost = Math.min(owe || r.min, purse[seat]);   // an all-in call risks the stack, not the price
-  const breakeven = cost / (r.pot + cost);
+  // Four runners, so no hand is ever worth heads-up equity: price the call against the pot
+  // it makes once the seats still owing match the bet, not the pot as it stands. Priced off
+  // the standing pot, the opening street asked 40% of a 25% shot and two hands in five
+  // folded out before a single bonus card turned.
+  // ponytail: assumes they all call -- optimistic, but symmetric across the table, and the
+  // fold branch below still throws away the hands that are genuinely behind.
+  const behind = r.live.reduce((a, s) => s === seat ? a : a + Math.min(Math.max(r.bet - r.in[s], 0), purse[s]), 0);
+  const breakeven = cost / (r.pot + behind + cost);
   const life = (purse[seat] - cost) / r.bb;        // blinds left if this one is paid
   const fear = life < runway ? runway / Math.max(life, 0.25) : 1;
   const aggro = opts.includes('raise') ? 'raise' : opts.includes('bet') ? 'bet' : null;

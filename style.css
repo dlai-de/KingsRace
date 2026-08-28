@@ -212,6 +212,11 @@ h1{
 
 .deck-counter{ font-size:.8rem; color:var(--muted); letter-spacing:.03em; }
 #chips{ line-height:1.6; text-align:center; }
+/* blind clock: rides in the header beside the title, top-left, out of everyone's way */
+#blindclock{
+  margin-right:auto; padding-left:14px;
+  font-size:.72rem; color:var(--muted); letter-spacing:.03em; white-space:nowrap;
+}
 #odds-btn{ padding:.4em .9em; font-size:.75rem; }
 #odds-btn.on{ color:var(--felt-2); background:linear-gradient(160deg,var(--gold-bright),var(--gold)); border-color:transparent; }
 .rider-label .odds, .rider-label .stake{

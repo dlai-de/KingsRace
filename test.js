@@ -575,6 +575,33 @@ for (let i = 0; i < 3000; i++) {
 }
 
 
+
+// A fresh table, opening blinds: four runners share the race, so nobody ever holds
+// heads-up equity. Priced against the standing pot alone the AI folded 40% of opening
+// streets, and a hand that dies there never bets again -- the race just runs itself out.
+{
+  const race = newRaceState();
+  let dead = 0;
+  const hands = 300;
+  for (let i = 0; i < hands; i++) {
+    const purse = newPurse(BUYIN);
+    const seated = [...SEATS];
+    const board = newRaceState();
+    const holes = Object.fromEntries(seated.map(s => [s, []]));
+    const suitOf = Object.fromEntries(SEATS.map((s, k) => [s, SUITS[k]]));
+    const { pot, blinds } = openPot(purse, seated, i);
+    dealHoles(board, seated.length, 2).forEach((h, k) => holes[seated[k]].push(...h));
+    const r = newRound(purse, seated, 1, pot, i, blinds);
+    for (let seat; (seat = actor(r));) {
+      const view = { ...board, hidden: seated.filter(s => s !== seat).flatMap(s => holes[s]) };
+      act(purse, r, seat, aiAction(odds(view, 150)[suitOf[seat]], r, purse, seat));
+    }
+    if (r.live.length < 2) dead++;
+  }
+  console.assert(dead / hands < 0.3,
+    `the AI folds out the opening street: ${(100 * dead / hands).toFixed(0)}% of fresh hands died there`);
+}
+
 // Seat chips must add back up to the stake -- a short stack makes bet sizes that are
 // not round fives, and a split that silently loses the remainder would mis-draw them.
 {

@@ -30,6 +30,7 @@ const victorySubtitleEl = document.getElementById('victory-subtitle');
 const pauseBtn = document.getElementById('pause-btn');
 const oddsBtn = document.getElementById('odds-btn');
 const chipsEl = document.getElementById('chips');
+const blindClockEl = document.getElementById('blindclock');
 const victoryChipsEl = document.getElementById('victory-chips');
 const holeEl = document.getElementById('hole-cards');
 const betlogEl = document.getElementById('betlog');
@@ -400,7 +401,9 @@ function renderChips() {
   // The pot as piles, same discs as the seats' stacks -- fixed-height row, so it never
   // shoves the deck panel around as the pot grows.
   chipsEl.innerHTML = `<i class="stack">${stackHTML(pot)}</i>` +
-    `Bank ${purse.you} · Pot ${pot}<br>` +
+    `Bank ${purse.you} · Pot ${pot}`;
+  blindClockEl.classList.toggle('hidden', mode !== 'computer');
+  blindClockEl.textContent =
     `Blinds ${bb / 2}/${bb} · ${left === Infinity ? 'top level' : left ? 'up in ' + mmss(left) : 'up next hand'}`;
   renderStakes();
 }
