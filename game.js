@@ -10,6 +10,7 @@ const SUIT_COL = { S: 0, D: 1, C: 2, H: 3 };
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q'];
 const ROWS = 8, COLS = 5;
 const COLW = 100 / COLS, ROWH = 100 / ROWS, PAD = 0.6;
+const ROWSTEP = ROWH / (ROWH - 2 * PAD) * 100; // one row, in % of a token's own height
 
 const shuffle = arr => {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -95,7 +96,7 @@ function newGame() {
 const FACE_RANKS = { K: 'king', Q: 'queen', J: 'jack' };
 function cardInnerHTML(rank, sym, color) {
   const faceName = FACE_RANKS[rank];
-  const figure = faceName ? `<img class="figure-img" src="assets/images/${color}_${faceName}.png" alt="">` : '';
+  const figure = faceName ? `<img class="figure-img" src="assets/images/${color}_${faceName}.webp" alt="">` : '';
   const centerClass = faceName ? 'pc-center has-figure' : 'pc-center';
   return `<span class="pc-corner tl">${rank}<br>${sym}</span>` +
     `<div class="${centerClass}">${figure}<span class="big-pip">${sym}</span></div>` +
@@ -104,7 +105,7 @@ function cardInnerHTML(rank, sym, color) {
 const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
 function jokerInnerHTML(color) {
   return `<span class="pc-corner tl joker-star">${STAR_SVG}</span>` +
-    `<div class="pc-center"><img class="figure-img joker-img" src="assets/images/${color}_joker.png" alt=""></div>` +
+    `<div class="pc-center"><img class="figure-img joker-img" src="assets/images/${color}_joker.webp" alt=""></div>` +
     `<span class="pc-corner br joker-star">${STAR_SVG}</span>`;
 }
 
@@ -123,11 +124,16 @@ function buildCells() {
   }
 }
 
+function setRow(el, row) {
+  el.style.setProperty('--ty', (row * ROWSTEP) + '%');
+}
+
 function positionToken(el, row, col) {
   el.style.left = (col * COLW + PAD) + '%';
-  el.style.top = (row * ROWH + PAD) + '%';
+  el.style.top = PAD + '%';
   el.style.width = (COLW - 2 * PAD) + '%';
   el.style.height = (ROWH - 2 * PAD) + '%';
+  setRow(el, row);
 }
 
 function renderTokens() {
@@ -159,11 +165,16 @@ function renderTokens() {
     tokensLayer.appendChild(el);
     bonusEls[r] = el;
   }
+
+  // dealIn is animation-fill-mode:both -- while it lingers it overrides the transform
+  // transition, so drop the class once it has played.
+  tokensLayer.querySelectorAll('.enter').forEach(el =>
+    el.addEventListener('animationend', () => el.classList.remove('enter'), { once: true }));
 }
 
 function moveKing(suit, row) {
   kingPos[suit] = row;
-  kingEls[suit].style.top = (row * ROWH + PAD) + '%';
+  setRow(kingEls[suit], row);
 }
 
 function revealBonusCard(row, card) {
@@ -440,3 +451,8 @@ document.getElementById('rules-close').addEventListener('click', () => {
   rulesPanel.classList.add('hidden');
   if (pausedByRules) { resumeGame(); pausedByRules = false; }
 });
+
+// sw.js was never registered, so nothing was ever precached.
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}

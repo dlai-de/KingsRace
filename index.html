@@ -52,10 +52,12 @@
 }
 </script>
 
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
 <link rel="apple-touch-icon" href="assets/images/black_king.png"/>
 <link rel="icon" href="assets/images/black_king.png" type="image/png"/>
 
+<link rel="preload" href="assets/fonts/Card%20Characters/CARDC___.TTF" as="font" type="font/ttf" crossorigin/>
+<link rel="manifest" href="manifest.webmanifest"/>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -68,12 +70,12 @@
   <p class="subtitle">Four Kings, four steeds, one crown at stake. Choose the champion you'll ride with to the finish line.</p>
   <div class="mode-picker">
     <button class="mode-card" data-mode="computer">
-      <img class="mode-icon" src="assets/images/pc.png" alt="">
+      <img class="mode-icon" src="assets/images/pc.webp" alt="">
       <span class="mode-title">Vs Computer</span>
       <span class="mode-desc">Pick a King. The computer picks another.</span>
     </button>
     <button class="mode-card" data-mode="friends">
-      <img class="mode-icon" src="assets/images/group.png" alt="">
+      <img class="mode-icon" src="assets/images/group.webp" alt="">
       <span class="mode-title">Play with Friends</span>
       <span class="mode-desc">Name up to 4 riders, one per suit.</span>
     </button>
@@ -172,8 +174,8 @@
 
 <!-- SIDE LINKS -->
 <div class="side-links">
-  <a class="side-btn" href="https://www.lorenzosciandra.com/" target="_blank" rel="noopener noreferrer" aria-label="Creator's website"><img src="assets/images/creator.png" alt=""></a>
-  <a class="side-btn" href="https://www.paypal.com/ncp/payment/S8NXDYHUK3JAN" target="_blank" rel="noopener noreferrer" aria-label="Support via PayPal"><img src="assets/images/paypal.png" alt=""></a>
+  <a class="side-btn" href="https://www.lorenzosciandra.com/" target="_blank" rel="noopener noreferrer" aria-label="Creator's website"><img src="assets/images/creator.webp" alt=""></a>
+  <a class="side-btn" href="https://www.paypal.com/ncp/payment/S8NXDYHUK3JAN" target="_blank" rel="noopener noreferrer" aria-label="Support via PayPal"><img src="assets/images/paypal.webp" alt=""></a>
 </div>
 
 <!-- RULES -->

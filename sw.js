@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'kings-race-v1';
+const CACHE_NAME = 'kings-race-v2';
 const APP_SHELL = [
   './',
   './index.html',

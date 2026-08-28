@@ -51,7 +51,6 @@ body{
     repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 2px, transparent 2px 4px),
     repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 2px, transparent 2px 4px);
   opacity:.15;
-  mix-blend-mode:multiply;
 }
 
 h1{
@@ -331,14 +330,17 @@ h1{
 .token{
   position:absolute;
   border-radius:6px;
-  transition: top .65s cubic-bezier(.34,1.3,.4,1);
+  /* ponytail: --ty is the row offset in % of the token's own height (see ROWSTEP in game.js).
+     Transform transitions stay on the compositor; `top` would relayout the whole board each frame. */
+  transform:translateY(var(--ty,0));
+  transition: transform .65s cubic-bezier(.34,1.3,.4,1);
 }
 .token.king{ z-index:2; }
 .token.king .pc-corner{ font-size:.6rem; }
 .token.king .big-pip{ font-size:.7rem; margin-top:-1px; }
 .token.king.player{ box-shadow:0 0 0 2px var(--gold-bright), 0 4px 14px rgba(243,217,154,.5); }
 .token.king.computer{ box-shadow:0 0 0 2px #7a9bc4, 0 4px 14px rgba(122,155,196,.5); }
-.token.king.winner{ animation:winnerPulse 1s ease infinite; z-index:5; }
+.token.king.winner{ animation:winnerPulse 1s ease infinite; z-index:5; will-change:transform; }
 
 .token.bonus-card{ perspective:600px; }
 .token.bonus-card .pc-corner{ font-size:.55rem; }
@@ -347,12 +349,12 @@ h1{
 /* entrance dealt-from-left animation */
 .token.enter{ animation:dealIn .5s cubic-bezier(.2,1.4,.4,1) both; }
 @keyframes dealIn{
-  from{ opacity:0; transform:translateX(-30px) scale(.7); }
-  to{ opacity:1; transform:translateX(0) scale(1); }
+  from{ opacity:0; transform:translateY(var(--ty,0)) translateX(-30px) scale(.7); }
+  to{ opacity:1; transform:translateY(var(--ty,0)) scale(1); }
 }
 @keyframes winnerPulse{
-  0%,100%{ transform:scale(1); }
-  50%{ transform:scale(1.18); }
+  0%,100%{ transform:translateY(var(--ty,0)) scale(1); }
+  50%{ transform:translateY(var(--ty,0)) scale(1.18); }
 }
 
 /* ---------- COUNTDOWN ---------- */
@@ -406,6 +408,7 @@ h1{
   width:96px; height:134px; margin:0 auto 1em;
   border-radius:10px; position:relative;
   animation:winnerPulse 1.4s ease infinite;
+  will-change:transform;
 }
 .victory-winner .pc-front{ width:100%; height:100%; }
 .victory-winner .big-pip{ font-size:1rem; }
