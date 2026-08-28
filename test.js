@@ -600,3 +600,12 @@ console.log('ok');
   console.assert(SUITS.every(x => p[x] >= 0 && p[x] <= 1), 'cloned state gave a bad probability');
 }
 
+
+// Everyone folds: the survivor takes the whole pot, stake or no stake, and nothing is
+// carried over to the next hand -- there is no runner-up to hand an overflow to.
+{
+  const purse = { you: 0, a1: 0, a2: 0, a3: 0, carry: 0 };
+  awardPot(purse, 260, ['you'], { you: 260 });   // how game.js pays an uncontested pot
+  console.assert(purse.you === 260, `uncontested pot paid ${purse.you}, not 260`);
+  console.assert(purse.carry === 0, `uncontested pot left ${purse.carry} behind`);
+}

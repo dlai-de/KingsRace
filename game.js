@@ -25,7 +25,6 @@ const discardStackEl = document.getElementById('discard-stack');
 const currentCardEl = document.getElementById('current-card');
 const countdownEl = document.getElementById('countdown');
 const countdownNumberEl = document.getElementById('countdown-number');
-const victoryWinnerEl = document.getElementById('victory-winner');
 const victoryTitleEl = document.getElementById('victory-title');
 const victorySubtitleEl = document.getElementById('victory-subtitle');
 const pauseBtn = document.getElementById('pause-btn');
@@ -41,11 +40,8 @@ const betlogEl = document.getElementById('betlog');
 // Turn it up to slow the race down, down to speed it up.
 const SPEED = +getComputedStyle(document.documentElement).getPropertyValue('--spd') || 1;
 let paused = false, pauseResolve = null;
-// Everyone but one seat folded: the pot is decided, so run the rest of the race at a
-// gallop just to show who the King would have been.
-let fastForward = false;
 async function sleep(ms) {
-  await new Promise(r => setTimeout(r, ms * SPEED * (fastForward ? 0.06 : 1)));
+  await new Promise(r => setTimeout(r, ms * SPEED));
   if (paused) await new Promise(res => { pauseResolve = res; });
 }
 function pauseGame(showOverlay = true) {
@@ -74,8 +70,8 @@ let race;                                 // the pure race state from race.js
 let mode, playerSuit, riderNames = {}, gameOver;
 let kingEls = {}, bonusEls = {};
 // Vs Computer is a 4-handed table: you plus three AI seats, one King each.
-const SEAT_NAME = { you: 'You', a1: 'AI 1', a2: 'AI 2', a3: 'AI 3' };
-const SEAT_TAG = { you: 'YOU', a1: 'AI 1', a2: 'AI 2', a3: 'AI 3' };
+const SEAT_NAME = { you: 'You', a1: 'Dmitri', a2: 'Sasha', a3: 'Kolya' };
+const SEAT_TAG = { you: 'YOU', a1: 'DMITRI', a2: 'SASHA', a3: 'KOLYA' };
 let seatSuit = {}, suitSeat = {}, holes = {}, seated = [], live = [], pot = 0, street = 0;
 let epoch = 0;   // bumped per race, so a replay can't leave the previous loop still stepping
 
@@ -84,7 +80,6 @@ function newGame() {
   epoch++;
   gameOver = false;
   paused = false;
-  fastForward = false;
   seated = []; live = []; holes = {}; pot = 0; street = 0;
   holeEl.innerHTML = '';
   pauseBtn.disabled = false;
@@ -272,18 +267,16 @@ async function gameLoop() {
   }
 }
 
-async function win(suit, photoFinish) {
+async function win(suit, photoFinish, uncontested) {
   gameOver = true;
   pauseBtn.disabled = true;
   kingEls[suit].classList.add('winner');
   await sleep(1000);
-  showVictory(suit, photoFinish);
+  showVictory(suit, photoFinish, uncontested);
 }
 
-function showVictory(suit, photoFinish) {
+function showVictory(suit, photoFinish, uncontested) {
   kingEls[suit].classList.remove('winner');
-  victoryWinnerEl.innerHTML = `<div class="pc-front ${SUIT_COLOR[suit]}">${cardInnerHTML('K', SUIT_GLYPH[suit], SUIT_COLOR[suit])}</div>`
-    + (window.seatFace?.(suit) ?? '');   // the rider that took it home, on the card's corner
   if (mode === 'computer') {
     if (suit === playerSuit) {
       victoryTitleEl.textContent = 'You Win!';
@@ -302,7 +295,12 @@ function showVictory(suit, photoFinish) {
       victorySubtitleEl.textContent = `No rider claimed this King, but it still won the race!`;
     }
   }
-  victoryChipsEl.textContent = settlePot(suit);
+  victoryChipsEl.textContent = settlePot(suit, uncontested);
+  if (uncontested) {
+    victorySubtitleEl.textContent = suit === playerSuit
+      ? 'Everyone else folded. The pot is yours without a race.'
+      : `Everyone else folded \u2014 ${SEAT_NAME[suitSeat[suit]]} takes it without a race.`;
+  }
   if (photoFinish) {
     victorySubtitleEl.textContent =
       `The deck ran out \u2014 the ${SUIT_NAME[suit]} King was furthest ahead. Photo finish!`;
@@ -610,9 +608,8 @@ async function bettingRound(n, blinds = {}) {
   renderChips();
   markFolded();
   await sleep(BEAT);              // the closed street reads before the deck starts again
-  if (live.length === 1) {
-    fastForward = true;
-  }
+  // Everyone else folded: nobody is left to race for it, so the pot is paid here and now.
+  if (live.length === 1) await win(seatSuit[live[0]], false, true);
 }
 
 async function openTable() {
@@ -623,7 +620,6 @@ async function openTable() {
   seated = alive(purse);
   if (seated.length < 2 || !seated.includes('you')) {
     renderChips();
-    victoryWinnerEl.innerHTML = '';
     victoryChipsEl.textContent = '';
     endRun();
     screenVictory.classList.remove('hidden');
@@ -642,12 +638,12 @@ async function openTable() {
   renderChips();
   startClock();
   await bettingRound(1, opened.blinds);
-  return true;
+  return !gameOver;   // folded out pre-flop: the hand is already paid, skip the countdown
 }
 
 // Race over. Only a King still in the pot can end the race, so the winner is always
 // someone who paid to be here.
-function settlePot(winSuit) {
+function settlePot(winSuit, uncontested) {
   if (mode !== 'computer') return '';
   const seat = suitSeat[winSuit];
   // Everyone's stake this hand, and the finish order of the riders still in the pot:
@@ -656,7 +652,10 @@ function settlePot(winSuit) {
   const order = rankSuits(race, race.contenders).map(su => suitSeat[su]);
   const before = { ...purse };
   const total = pot;
-  awardPot(purse, pot, order, paid);
+  // An uncontested pot has no runner-up to hand the overflow to: it all goes to the
+  // one seat still in, stake or no stake.
+  if (uncontested) awardPot(purse, pot, [seat], { [seat]: pot });
+  else awardPot(purse, pot, order, paid);
   const won = s => purse[s] - before[s];
   pot = 0;
   commit = { ...purse };   // the pot is paid: a new boundary to store
@@ -804,7 +803,7 @@ function startFriendsRace() {
 // ---------- Events ----------
 document.querySelectorAll('.name-input').forEach(input => {
   input.addEventListener('input', () => {
-    input.value = input.value.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase();
+    input.value = input.value.replace(/[^a-zA-Z]/g, '').toUpperCase();
   });
 });
 document.querySelectorAll('.pick-card').forEach(card => {

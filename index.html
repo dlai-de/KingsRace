@@ -91,19 +91,19 @@
   <div class="king-picker">
     <div class="pick-card black" data-suit="S">
       <div class="card-face"></div>
-      <input class="name-input hidden" type="text" maxlength="3" placeholder="TAG">
+      <input class="name-input hidden" type="text" placeholder="NAME">
     </div>
     <div class="pick-card red" data-suit="D">
       <div class="card-face"></div>
-      <input class="name-input hidden" type="text" maxlength="3" placeholder="TAG">
+      <input class="name-input hidden" type="text" placeholder="NAME">
     </div>
     <div class="pick-card black" data-suit="C">
       <div class="card-face"></div>
-      <input class="name-input hidden" type="text" maxlength="3" placeholder="TAG">
+      <input class="name-input hidden" type="text" placeholder="NAME">
     </div>
     <div class="pick-card red" data-suit="H">
       <div class="card-face"></div>
-      <input class="name-input hidden" type="text" maxlength="3" placeholder="TAG">
+      <input class="name-input hidden" type="text" placeholder="NAME">
     </div>
   </div>
   <p class="setup-warning hidden" id="setup-warning"></p>
@@ -164,15 +164,12 @@
 
 <!-- VICTORY -->
 <div id="screen-victory" class="hidden">
-  <div class="victory-card">
-    <div id="victory-winner" class="victory-winner"></div>
-    <h2 id="victory-title"></h2>
-    <p id="victory-subtitle"></p>
-    <p id="victory-chips"></p>
-    <div class="btn-row">
-      <button id="replay-btn">Continue</button>
-      <button id="quit-btn" class="btn-ghost">Quit</button>
-    </div>
+  <h2 id="victory-title"></h2>
+  <p id="victory-subtitle"></p>
+  <p id="victory-chips"></p>
+  <div class="btn-row">
+    <button id="replay-btn">Continue</button>
+    <button id="quit-btn" class="btn-ghost">Quit</button>
   </div>
 </div>
 

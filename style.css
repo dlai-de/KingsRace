@@ -454,7 +454,7 @@ h1{
 .paused-sub{ margin:-10px 0 0; font-size:.9rem; color:var(--muted); }
 
 /* ---------- ACTION DOCK (your turn to bet -- right rail, table stays visible) ---------- */
-.bet-dock{
+.bet-dock, #screen-victory{
   position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:45;
   width:206px; padding:14px; border-radius:14px;
   display:flex; flex-direction:column; gap:10px;
@@ -469,9 +469,9 @@ h1{
   text-transform:uppercase; color:var(--gold-bright);
 }
 .bet-ask{ margin:0; font-size:.72rem; line-height:1.45; color:var(--muted); }
-.bet-dock .btn-row{ flex-direction:column; align-items:stretch; gap:8px; margin:0; }
-.bet-dock .btn-row button{ min-width:0; padding:.55em .8em; font-size:.8rem; }
-.bet-dock .btn-row button:hover{ transform:translateY(-1px); }
+.bet-dock .btn-row, #screen-victory .btn-row{ flex-direction:column; align-items:stretch; gap:8px; margin:0; }
+.bet-dock .btn-row button, #screen-victory .btn-row button{ min-width:0; padding:.55em .8em; font-size:.8rem; }
+.bet-dock .btn-row button:hover, #screen-victory .btn-row button:hover{ transform:translateY(-1px); }
 /* pick your own bet inside the street's limit */
 .bet-size{ display:flex; flex-direction:column; gap:6px; font-size:.7rem; color:var(--muted); letter-spacing:.03em; }
 .bet-size b{ color:var(--gold-bright); font-size:.9rem; }
@@ -481,33 +481,11 @@ h1{
   text-shadow:0 0 40px rgba(243,217,154,.5);
 }
 
-/* ---------- VICTORY ---------- */
-#screen-victory{
-  position:fixed; inset:0; z-index:60;
-  display:flex; align-items:center; justify-content:center;
-  background:rgba(4,10,7,.78);
-  animation:fadeIn .5s ease both;
-}
-.victory-card{
-  position:relative; z-index:2;
-  background:linear-gradient(160deg,var(--felt-1),var(--felt-2));
-  border:1px solid rgba(212,175,106,.5);
-  border-radius:18px; padding:2.4em 2.6em; text-align:center;
-  box-shadow:0 30px 80px rgba(0,0,0,.6);
-  animation:victoryPop .6s cubic-bezier(.2,1.4,.4,1) both;
-}
-@keyframes victoryPop{
-  from{ opacity:0; transform:scale(.6) translateY(30px); }
-  to{ opacity:1; transform:scale(1) translateY(0); }
-}
-.victory-winner{
-  width:96px; height:134px; margin:0 auto 1em;
-  border-radius:10px; position:relative;
-  animation:winnerPulse 1.4s ease infinite;
-  will-change:transform;
-}
-.victory-winner .pc-front{ width:100%; height:100%; }
-.victory-winner .big-pip{ font-size:1rem; }
+/* ---------- VICTORY (a note on the right rail -- the board stays in view) ---------- */
+#victory-title{ font-family:'Card Characters','Cinzel',serif; color:var(--gold-bright); margin:0; font-size:1rem; letter-spacing:.06em; }
+#victory-subtitle{ margin:0; font-size:.72rem; line-height:1.45; color:var(--muted); }
+#victory-chips{ margin:0; font-size:.72rem; line-height:1.45; color:var(--gold-bright); }
+#victory-chips:empty{ display:none; }   /* friends mode plays for no chips */
 
 .pick-card .big-pip{ font-size:1rem; }
 #victory-title{ font-family:'Card Characters','Cinzel',serif; color:var(--gold-bright); margin:.3em 0 .2em; font-size:1.9rem; }
@@ -581,11 +559,11 @@ h1{
   .betlog{ left:6px; }
   .betlog li{ font-size:.62rem; padding:3px 7px; }
   /* no room beside a portrait board: the dock drops to a bar above the corner buttons */
-  .bet-dock{
+  .bet-dock, #screen-victory{
     left:6px; right:6px; top:auto; bottom:78px; transform:none; width:auto;
     flex-flow:row wrap; align-items:center; justify-content:center; gap:8px 12px;
   }
-  .bet-dock .btn-row{ flex-direction:row; gap:8px; }
+  .bet-dock .btn-row, #screen-victory .btn-row{ flex-direction:row; gap:8px; }
   .bet-size{ flex-direction:row; align-items:center; gap:8px; flex:1 1 160px; }
   @keyframes dockIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
   .rider-label{ font-size:.72rem; letter-spacing:.04em; }
