@@ -616,8 +616,8 @@ for (let i = 0; i < 3000; i++) {
 
 console.log('ok');
 
-// odds-worker.js posts the live race state across a structured clone (`revealed` is a
-// Set). If that stops surviving the trip, the odds panel silently breaks.
+// game.js prices the AI's bets off `structuredClone(race)` (`revealed` is a Set). If that
+// stops surviving the clone, every AI decision is silently priced off a broken state.
 {
   const s = newRaceState();
   for (let i = 0; i < 6; i++) stepRace(s);

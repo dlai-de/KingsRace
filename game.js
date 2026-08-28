@@ -28,7 +28,6 @@ const countdownNumberEl = document.getElementById('countdown-number');
 const victoryTitleEl = document.getElementById('victory-title');
 const victorySubtitleEl = document.getElementById('victory-subtitle');
 const pauseBtn = document.getElementById('pause-btn');
-const oddsBtn = document.getElementById('odds-btn');
 const chipsEl = document.getElementById('chips');
 const blindClockEl = document.getElementById('blindclock');
 const victoryChipsEl = document.getElementById('victory-chips');
@@ -242,7 +241,6 @@ async function renderEvent(e) {
 
 async function gameLoop() {
   const mine = epoch;
-  updateOdds();
   while (!gameOver && epoch === mine) {
     // The table as it stood before this card. A street opens with the bonus card still
     // face down, so that snapshot -- not the mutated state -- is what the round is priced
@@ -263,7 +261,6 @@ async function gameLoop() {
       }
       await renderEvent(e);
     }
-    updateOdds();
     await sleep(250);
   }
 }
@@ -326,7 +323,7 @@ function setRiderLabels() {
   SUITS.forEach(suit => {
     const label = mode === 'computer' ? SEAT_TAG[suitSeat[suit]] : (riderNames[suit] || '');
     const el = document.getElementById('label-' + suit);
-    el.innerHTML = '<i class="chips"></i><b class="tag"></b><i class="odds"></i><i class="stack"></i><i class="stake"></i><i class="said"></i>';
+    el.innerHTML = '<i class="chips"></i><b class="tag"></b><i class="stack"></i><i class="stake"></i><i class="said"></i>';
     el.querySelector('.tag').textContent = label;   // friends-mode names are user input
     el.classList.toggle('you', mode === 'computer' && suit === playerSuit);
   });
@@ -485,8 +482,6 @@ function askAction(r) {
     // it comes keyboard-accessible for free.
     const hi = Math.min(r.cap - r.bet, purse.you - owe);
     const sizeable = hi > r.min && (opts.includes('bet') || opts.includes('raise'));
-    // The Handicapper is opt-in, so only price the hand when it's switched on.
-    const p = showOdds ? Math.round(odds(seatView('you'), 800)[playerSuit] * 100) + '% to win · ' : '';
     // ponytail: a dock on the free right rail, not a fullscreen overlay. The board, the
     // plaques and your hole cards in the deck panel all stay readable while you decide,
     // so the panel only carries what is not already on screen: the street and the ask.
@@ -525,8 +520,8 @@ function askAction(r) {
 // every other sleep in the race, so the betting can never drift out of step with the cards.
 const THINK = 600, BEAT = 550;
 
-// ponytail: 500 runs inline rather than through the worker -- the race is stopped for
-// the betting round anyway, so a few ms of main thread beats a request/reply protocol.
+// ponytail: 500 runs on the main thread -- the race is stopped for the betting round
+// anyway, so a few ms of blocking beats a worker and a request/reply protocol.
 async function aiTurn(r, seat) {
   const p = odds(seatView(seat), 500)[seatSuit[seat]];
   await sleep(THINK);
@@ -696,36 +691,6 @@ function endRun() {
   replayBtn.classList.add('hidden');
   return true;
 }
-
-// ---------- Handicapper ----------
-// Monte Carlo win% under each rider, off by default.
-let showOdds = false;
-let oddsWorker = null;
-try {
-  oddsWorker = new Worker('odds-worker.js');
-  oddsWorker.onmessage = e => { if (showOdds && !gameOver) paintOdds(e.data); };
-} catch { /* ponytail: no Worker (file://) -- updateOdds runs it inline instead */ }
-
-function paintOdds(p) {
-  SUITS.forEach(suit => {
-    const el = document.querySelector('#label-' + suit + ' .odds');
-    if (el) el.textContent = p ? Math.round(p[suit] * 100) + '%' : '';
-  });
-}
-// 1200 simulated races is ~10ms of blocked main thread on desktop and worse on a
-// phone -- right where the tokens are sliding. The worker makes it free.
-function updateOdds() {
-  if (!showOdds || gameOver) return paintOdds(null);
-  const view = mode === 'computer' && holes.you ? seatView('you') : race;
-  if (oddsWorker) oddsWorker.postMessage(view);   // `revealed` is a Set; structured clone handles it
-  else paintOdds(odds(view));
-}
-oddsBtn.addEventListener('click', () => {
-  showOdds = !showOdds;
-  oddsBtn.classList.toggle('on', showOdds);
-  oddsBtn.textContent = showOdds ? 'Odds: On' : 'Odds';
-  updateOdds();
-});
 
 async function startRace() {
   screenSelect.classList.add('hidden');
