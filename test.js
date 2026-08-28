@@ -131,7 +131,7 @@ console.assert(odds(nearly, 2000).H > 0.6, 'leader is not favoured');
 }
 
 // ---------- bets.js fixed-limit betting ----------
-const { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, awardPot }
+const { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot }
   = require('./bets.js');
 
 const BB = BLINDS[0], SB = BB / 2;
@@ -291,11 +291,11 @@ for (const winner of [...SEATS, null]) {
   const breakeven = cost / (r.pot + cost);
   const marginal = 1.2 * breakeven;          // a call for a deep stack, a fold for a short one
   // Bluffing off here -- this is about fear, and the bluff rate gets its own check below.
-  console.assert(aiAction(marginal, r, purse, 'a2', 0) === 'call', 'deep stack did not call a priced-in hand');
-  console.assert(aiAction(marginal, r, purse, 'a1', 0) === 'fold', 'short stack called off its last chips');
+  console.assert(aiAction(marginal, r, purse, 'a2', null, 0).action === 'call', 'deep stack did not call a priced-in hand');
+  console.assert(aiAction(marginal, r, purse, 'a1', null, 0).action === 'fold', 'short stack called off its last chips');
   // A lock is still a lock -- fear tightens the threshold, it does not freeze the seat.
-  console.assert(aiAction(0.99, r, purse, 'a1') !== 'fold', 'short stack folded a lock');
-  const rate = seat => Array.from({ length: 600 }, () => aiAction(0.0, r, purse, seat))
+  console.assert(aiAction(0.99, r, purse, 'a1').action !== 'fold', 'short stack folded a lock');
+  const rate = seat => Array.from({ length: 600 }, () => aiAction(0.0, r, purse, seat).action)
     .filter(a => a === 'raise').length / 600;
   console.assert(rate('a1') < rate('a2'), 'short stack bluffed as freely as a deep one');
 }
@@ -477,7 +477,7 @@ for (let i = 0; i < 3000; i++) {
   const purse = newPurse();
   const r = newRound(purse, SEATS, 1, 100);
   act(purse, r, 'you', 'bet');
-  const many = (p, seat) => Array.from({ length: 400 }, () => aiAction(p, r, purse, seat));
+  const many = (p, seat) => Array.from({ length: 400 }, () => aiAction(p, r, purse, seat).action);
   console.assert(many(0.99, 'a1').every(a => a === 'raise'), 'a lock did not raise');
   const weak = many(0.0, 'a1');
   console.assert(weak.every(a => a === 'fold' || a === 'raise'), 'weak hand did something odd');
@@ -490,8 +490,94 @@ for (let i = 0; i < 3000; i++) {
   act(purse, capped, 'a3', 'raise');
   act(purse, capped, 'you', 'raise');
   // 'a1' opened and got raised over: it is the seat with something left to answer.
-  console.assert(aiAction(0.99, capped, purse, 'a1') === 'call', 'capped street: lock did not call');
-  console.assert(aiAction(0.0, capped, purse, 'a1') === 'fold', 'capped street: dead hand did not fold');
+  console.assert(aiAction(0.99, capped, purse, 'a1').action === 'call', 'capped street: lock did not call');
+  console.assert(aiAction(0.0, capped, purse, 'a1').action === 'fold', 'capped street: dead hand did not fold');
+}
+
+// Bet sizing: the amount says something. A lock pushes towards the street's ceiling, a
+// hand barely ahead of an even four-way split slides the minimum in -- and a bluff is not
+// giveable away by its size, so it is spread across the same range instead of parked on
+// the minimum like every AI bet used to be.
+{
+  const purse = newPurse();
+  const r = newRound(purse, SEATS, 1, 100);
+  act(purse, r, 'you', 'bet');
+  const hi = Math.min(r.cap - r.bet, purse.a1 - (r.bet - r.in.a1));
+  console.assert(hi > r.min, 'no room to size in: the rest of this check proves nothing');
+  console.assert(aiSize(0.99, r, purse, 'a1', false) > 0.9 * hi, 'a lock min-raised');
+  console.assert(aiSize(0.26, r, purse, 'a1', false) <= r.min + 1, 'a coin flip shoved');
+  const sizes = Array.from({ length: 400 }, () => aiSize(0, r, purse, 'a1', true));
+  console.assert(sizes.every(n => n >= r.min && n <= hi), 'a bluff sized outside the street');
+  console.assert(new Set(sizes).size > 3, 'every bluff came in at the same size');
+  // Whatever the AI asks for, `act` still owns the ceiling.
+  const m = aiAction(0.99, r, purse, 'a1');
+  const before = r.bet;
+  act(purse, r, 'a1', m.action, m.want);
+  console.assert(r.bet <= r.cap && r.bet > before, 'a sized raise broke the street cap');
+}
+
+// The read: the table remembers the whole match, not one race, and prices your next move
+// off the pressure you are under. An unread player predicts a flat third and changes
+// nothing -- the prediction has to earn its way in.
+{
+  const purse = newPurse();
+  const r = newRound(purse, SEATS, 1, 100);
+  act(purse, r, 'you', 'bet');
+
+  // Stress is public pressure: a deep stack owing nothing is calm, a stack facing a bet
+  // it can barely cover is not.
+  const calm = newRound(purse, SEATS, 1, 100);
+  console.assert(stressIndex(calm, purse, 'a1') === 0, 'a deep stack owing nothing felt stress');
+  const shortPurse = { ...purse, a1: BB };
+  console.assert(stressIndex(r, shortPurse, 'a1') > 0.5, 'a stack on fumes felt calm');
+
+  // Memory: filed by bucket, and free actions are not decisions worth reading.
+  const read = newRead();
+  console.assert(foldRate(read, 0) === 1 / 3 && foldRate(newRead(), 1) === 1 / 3,
+    'an unread player was not predicted neutral');
+  remember(read, 0.9, 'fold');
+  remember(read, 0.1, 'call');
+  remember(read, 0.1, 'check');
+  remember(read, 0.1, 'bet');
+  console.assert(read.hot[0] === 1 && read.cool[1] === 1, 'the read filed an action in the wrong bucket');
+  console.assert(read.cool[0] + read.cool[1] + read.cool[2] === 1, 'a free action was counted as a decision');
+  console.assert(foldRate(read, 0.9) > foldRate(read, 0.1), 'pressure did not move the prediction');
+
+  // Two opposite reads over a whole match, same seat, same hopeless hand: the seats bluff
+  // into the player who keeps folding and give up on the one who never does.
+  const bluffRate = r2 => Array.from({ length: 3000 },
+    () => aiAction(0.0, r, purse, 'a1', r2).action).filter(a => a === 'raise').length / 3000;
+  const folder = newRead(), station = newRead();
+  // Both buckets, since the bucket that gets used is whichever one the AI's own raise
+  // would put `you` in.
+  for (let i = 0; i < 40; i++) {
+    [0.1, 0.9].forEach(st => { remember(folder, st, 'fold'); remember(station, st, 'call'); });
+  }
+  console.assert(bluffRate(folder) > bluffRate(station),
+    `the read changed nothing: ${bluffRate(folder)} vs ${bluffRate(station)}`);
+  console.assert(bluffRate(null) > 0.03 && bluffRate(null) < 0.2, 'an unread table drifted off its base bluff rate');
+
+  // Sizing runs the other way: a caller gets value bet harder, a folder gets bluffed bigger.
+  const hi = Math.min(r.cap - r.bet, purse.a1 - (r.bet - r.in.a1));
+  const avg = (bluffing, tell) => Array.from({ length: 400 },
+    () => aiSize(0.5, r, purse, 'a1', bluffing, tell)).reduce((a, b) => a + b, 0) / 400;
+  console.assert(avg(false, 0.9) < avg(false, 0.1), 'a station was not value bet harder than a folder');
+  console.assert(avg(true, 0.9) > avg(true, 0.1), 'a folder was not bluffed bigger than a station');
+  console.assert(avg(true, 0.9) <= hi && avg(false, 0.1) <= hi, 'the read sized past the street cap');
+
+  // The read only applies to a player who can still fold.
+  const gone = newRound(purse, SEATS, 1, 100);
+  act(purse, gone, 'a1', 'bet');
+  act(purse, gone, 'you', 'fold');
+  const outRate = Array.from({ length: 3000 },
+    () => aiAction(0.0, gone, purse, 'a2', folder).action).filter(a => a === 'raise').length / 3000;
+  console.assert(outRate < 0.2, 'the table kept bluffing at a player already out of the hand');
+
+  // A read restores whole or not at all -- and never takes the bankroll down with it.
+  console.assert(loadRead({ cool: [1, 2, 3], hot: [0, 0, 0] }).cool[2] === 3, 'a good read did not restore');
+  [null, {}, { cool: [1, 2], hot: [0, 0, 0] }, { cool: [1, 2, -3], hot: [0, 0, 0] }, { cool: [1, 2, 3] }]
+    .forEach(bad => console.assert(JSON.stringify(loadRead(bad)) === JSON.stringify(newRead()),
+      'a broken read was restored anyway: ' + JSON.stringify(bad)));
 }
 
 // ---------- a whole run, end to end ----------
@@ -531,7 +617,8 @@ for (let i = 0; i < 3000; i++) {
         let guard = 0;
         for (let seat; (seat = actor(r));) {
           const p = odds(view(seat), 60)[suitOf[seat]];
-          act(purse, r, seat, aiAction(p, r, purse, seat));
+          const m = aiAction(p, r, purse, seat);
+          act(purse, r, seat, m.action, m.want);
           console.assert(++guard < 100, 'betting round did not terminate in a real hand');
         }
         live = r.live;
@@ -594,7 +681,8 @@ for (let i = 0; i < 3000; i++) {
     const r = newRound(purse, seated, 1, pot, i, blinds);
     for (let seat; (seat = actor(r));) {
       const view = { ...board, hidden: seated.filter(s => s !== seat).flatMap(s => holes[s]) };
-      act(purse, r, seat, aiAction(odds(view, 150)[suitOf[seat]], r, purse, seat));
+      const m = aiAction(odds(view, 150)[suitOf[seat]], r, purse, seat);
+      act(purse, r, seat, m.action, m.want);
     }
     if (r.live.length < 2) dead++;
   }

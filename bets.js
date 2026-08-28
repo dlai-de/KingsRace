@@ -155,6 +155,66 @@ function act(purse, r, seat, action, want = r.min) {
   return { seat, action, amount, to: r.bet, allin: purse[seat] === 0 };
 }
 
+// ---------- The read: what the table remembers about you ----------
+// A race is one hand; a match is a dozen of them. A player who folds every time the
+// blinds start to bite folds that way in the third race too, and a seat that forgets at
+// the finish line can never notice. So the counts below live for the whole run and
+// survive a reload, alongside the chips but never mixed in with them -- a corrupt read
+// costs the AI its memory, not your bankroll.
+//
+// Everything it reads is public: the price you are being asked to pay, what is left of
+// your stack, and what you did about it. Nobody looks at your hole cards.
+
+// The stress index: how much pressure a seat is visibly under, 0 calm .. 1 desperate.
+// Two things squeeze a player and neither is a secret -- the size of the bet relative to
+// what they have left, and how few big blinds that stack is worth with the clock still
+// climbing. The worse of the two wins: a cheap call is still a hard one on fumes.
+const STRESS_BUCKET = 0.5;   // over this, an action is filed under pressure
+const CALM_BB = 10;          // a stack this deep in blinds feels no clock
+function stressIndex(r, purse, seat) {
+  const owe = Math.min(Math.max(r.bet - r.in[seat], 0), purse[seat]);
+  const price = owe / Math.max(purse[seat], 1);
+  const clock = 1 - Math.min(purse[seat] / r.bb / CALM_BB, 1);
+  return Math.min(Math.max(price, clock, 0), 1);
+}
+
+// [folds, calls, aggressions] in each bucket. One read for the whole table: all three
+// seats are the same computer, and splitting it three ways would just make each of them
+// learn three times slower.
+const newRead = () => ({ cool: [0, 0, 0], hot: [0, 0, 0] });
+
+// Only decisions taken facing a bet are worth filing -- those are the ones the AI is
+// trying to predict when it puts chips in. A check costs nothing and an opening bet
+// answers no one, so both fall through the map and are not counted.
+const VERB = { fold: 0, call: 1, raise: 2 };
+function remember(read, stress, action) {
+  const k = VERB[action];
+  if (k === undefined || !read) return read;
+  read[stress > STRESS_BUCKET ? 'hot' : 'cool'][k]++;
+  return read;
+}
+
+// P(this player folds) at that much pressure. One imaginary observation in each column,
+// so an unread player predicts a flat third and every seat plays its own game until the
+// table has actually seen something -- the prediction has to earn its way in.
+// ponytail: three counters and a prior, not a classifier. It cannot tell a bluff-catch
+// from a nut call, and it will not notice you changing gear mid-run. Bucket by street or
+// by bet size when it needs to.
+const NEUTRAL = 1 / 3;
+function foldRate(read, stress) {
+  const row = read?.[stress > STRESS_BUCKET ? 'hot' : 'cool'];
+  if (!row) return NEUTRAL;
+  const n = row[0] + row[1] + row[2] + 3;
+  return (row[0] + 1) / n;
+}
+
+// A read only restores whole: two buckets of three counts. Anything else and the table
+// starts the match with no memory, which is exactly where a fresh run starts anyway.
+function loadRead(saved) {
+  const ok = row => Array.isArray(row) && row.length === 3 && row.every(n => Number.isInteger(n) && n >= 0);
+  return ok(saved?.cool) && ok(saved?.hot) ? { cool: [...saved.cool], hot: [...saved.hot] } : newRead();
+}
+
 // The AI: pot odds, plus one bluff in ten so it isn't a readable machine.
 // `p` is this seat's own win probability, computed from its own hole cards.
 //
@@ -167,7 +227,7 @@ function act(purse, r, seat, action, want = r.min) {
 // stack, not the asking price, and the seat would otherwise fold hands it is getting a
 // free look at. Measured in blinds, so what counts as short does not move with the
 // street's bet size.
-function aiAction(p, r, purse, seat, bluff = 0.1, runway = 2) {
+function aiAction(p, r, purse, seat, read = null, bluff = 0.1, runway = 2) {
   const opts = legal(r, purse, seat);
   const owe = r.bet - r.in[seat];
   const cost = Math.min(owe || r.min, purse[seat]);   // an all-in call risks the stack, not the price
@@ -182,9 +242,43 @@ function aiAction(p, r, purse, seat, bluff = 0.1, runway = 2) {
   const life = (purse[seat] - cost) / r.bb;        // blinds left if this one is paid
   const fear = life < runway ? runway / Math.max(life, 0.25) : 1;
   const aggro = opts.includes('raise') ? 'raise' : opts.includes('bet') ? 'bet' : null;
-  if (aggro && (Math.random() < bluff / fear || p > 1.5 * fear * breakeven)) return aggro;
-  if (owe === 0) return 'check';
-  return p > fear * breakeven ? 'call' : 'fold';
+  const strong = p > 1.5 * fear * breakeven;
+  // The read is only worth having while there is somebody left to fold: once you are out
+  // of the hand or already all in, no bet of mine can move you and the seat plays its own
+  // game again. Priced off the pressure a minimum raise would put you under, not the bet
+  // already standing -- the question is how you answer *this* one.
+  const readable = read && seat !== 'you' && r.live.includes('you') && purse.you > 0;
+  const tell = readable ? foldRate(read, stressIndex({ ...r, bet: r.bet + r.min }, purse, 'you')) : NEUTRAL;
+  // Bluff into a folder, stop bluffing at a station -- and value bet the station harder,
+  // since the chips only come back if somebody calls. Both multipliers are 1 at the
+  // neutral prior, so an unread table behaves exactly as it did before.
+  if (aggro && (strong || Math.random() < bluff * (0.5 + 1.5 * tell) / fear))
+    return { action: aggro, want: aiSize(p, r, purse, seat, !strong, tell) };
+  if (owe === 0) return { action: 'check', want: 0 };
+  return { action: p > fear * breakeven ? 'call' : 'fold', want: 0 };
+}
+
+// How far into the street's range the chips go. Fixed limit already sets the ceiling, so
+// this is the only sizing choice a seat gets -- and sliding the minimum in every time threw
+// it away: a lock and a bluff both cost one small bet to call, so the amount carried no
+// pressure and no information. Meanwhile the human's slider ran to the cap.
+// Value: the edge over an even four-way split, stretched across what is left of the range.
+// Bluff: a size drawn at random from that same range, because betting small with air and
+// big with a lock is the first tell a human picks up -- and it is free to read.
+// ponytail: no board texture, no opponent model, no bet-size balancing across a range of
+// hands. One number in, one number out. Reading the other seats' bets is the next step,
+// and it needs a hand-range model this AI does not have yet.
+const RUNNERS = SEATS.length;
+function aiSize(p, r, purse, seat, bluffing, tell = NEUTRAL) {
+  const owe = Math.max(r.bet - r.in[seat], 0);
+  // The same ceiling `act` clamps to: the street cap, or the stack behind the call.
+  const hi = Math.min(r.cap - r.bet, purse[seat] - owe);
+  if (hi <= r.min) return r.min;
+  // A bluff wants fold equity, so it grows with how likely you are to fold; a value bet
+  // wants a caller, so it grows as that gets less likely. Same knob, opposite signs.
+  const edge = bluffing ? Math.random() * (0.5 + 1.5 * tell)
+                        : (p - 1 / RUNNERS) / (1 - 1 / RUNNERS) * (1 + NEUTRAL - tell);
+  return Math.round(r.min + Math.min(Math.max(edge, 0), 1) * (hi - r.min));
 }
 
 // The pot pays out in layers: a seat wins from each opponent only as much as it staked
@@ -221,5 +315,5 @@ const chipSplit = n => CHIPS.flatMap(v => {
 });
 
 if (typeof module !== 'undefined') {
-  module.exports = { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, awardPot, chipSplit };
+  module.exports = { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot, chipSplit };
 }
