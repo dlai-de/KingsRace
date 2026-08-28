@@ -144,9 +144,16 @@ h1{
 .pause-btn:disabled{ opacity:.4; cursor:default; transform:none; }
 
 .race-main{
+  --panel:150px;
+  /* The board's width follows its height, so cap the row at roughly what the tallest
+     board can need -- otherwise a wide screen strands the deck panel out on the left. */
+  width:100%; max-width:calc(100dvh * 1.2); margin-inline:auto;
   flex:1 1 auto; min-height:0;
   display:flex; align-items:stretch; justify-content:center; gap:20px;
 }
+/* The board centres itself inside .board-wrap, which eats all the slack; this mirrors
+   the deck panel on the other side so the board still lands mid-table. */
+.race-main::after{ content:''; flex:0 0 var(--panel); }
 
 /* ---------- chip log (fixed to the left rail, fades out between streets) ---------- */
 .betlog{
@@ -168,7 +175,7 @@ h1{
 
 /* ---------- deck panel (left of board) ---------- */
 .deck-panel{
-  flex:0 0 auto; width:150px;
+  flex:0 0 auto; width:var(--panel);
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
 }
 .pile{ display:flex; flex-direction:column; align-items:center; gap:10px; }
@@ -582,7 +589,7 @@ h1{
   #screen-race{ padding:14px 16px 80px; }   /* bottom band = the corner buttons */
   .board-wrap{ padding-right:70px; padding-bottom:141px; }
   .rail{ font-size:.62rem; margin-left:8px; }
-  .deck-panel{ width:110px; }
+  .race-main{ --panel:110px; }
   .betlog{ left:6px; }
   .betlog li{ font-size:.62rem; padding:3px 7px; }
   /* no free rail beside a portrait board: the dock takes its own row in the column
@@ -597,6 +604,8 @@ h1{
   }
   .bet-dock .btn-row, #screen-victory .btn-row{ flex-direction:row; gap:8px; }
   .bet-size{ flex-direction:row; align-items:center; gap:8px; flex:1 1 160px; }
+  /* the dock coming and going resizes the board -- ride it instead of popping */
+  #board{ transition:height calc(.35s * var(--spd)) ease; }
   @keyframes dockIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
   .rider-label{ font-size:.72rem; letter-spacing:.04em; }
   .chip{ width:11px; height:11px; margin-left:-4px; }
@@ -620,6 +629,7 @@ h1{
   .pause-btn{ font-size:.72rem; padding:.45em .9em; }
 
   .race-main{ flex-direction:column; gap:6px; }
+  .race-main::after{ display:none; }
   .deck-panel{
     width:auto; flex:0 0 auto;
     flex-flow:row wrap; justify-content:center; align-items:center; gap:4px 8px;

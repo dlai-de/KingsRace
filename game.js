@@ -352,9 +352,28 @@ let commit = { ...purse };
 function savePurse() {
   try { localStorage.setItem(PURSE_KEY, JSON.stringify(purseBlob(commit, purse))); } catch { /* private mode */ }
 }
+
+// What the table has learned about you, kept for the whole match rather than one race --
+// bets.js reads it, this only stores it. Its own key on purpose: it is not chips, it must
+// not have to add up to the stake, and a garbled read must never cost anybody a bankroll.
+// It is written every time you act, not at a hand boundary: a read is true the moment it
+// is taken, so half a hand of it is still worth keeping.
+const READ_KEY = 'kr-read';
+let readSaved = null;
+try { readSaved = JSON.parse(localStorage.getItem(READ_KEY)); } catch { /* corrupt blob, or no storage */ }
+let read = loadRead(readSaved);
+function saveRead() {
+  try { localStorage.setItem(READ_KEY, JSON.stringify(read)); } catch { /* private mode */ }
+}
 // Drop the run. Next load has nothing to restore, so loadPurse deals a fresh table.
 function dropPurse() {
   try { localStorage.removeItem(PURSE_KEY); } catch { /* private mode */ }
+}
+// The read belongs to the match the chips belong to. A new table is a new opponent as far
+// as the seats are concerned, so it is forgotten wherever the stacks are.
+function dropRead() {
+  read = newRead();
+  try { localStorage.removeItem(READ_KEY); } catch { /* private mode */ }
 }
 // A run only carries on through Continue. Coming in off the mode screen is a new table:
 // level stacks, blinds back to level 1, clock back to zero -- a reload mid-hand used to
@@ -365,6 +384,7 @@ function resetPurse() {
   Object.assign(purse, loadPurse(null));
   commit = { ...purse };
   handStart = {};
+  dropRead();
   savePurse();
 }
 // The blind timer runs on real playing time only: it stops for the pause overlay, the
@@ -524,8 +544,9 @@ const THINK = 600, BEAT = 550;
 // anyway, so a few ms of blocking beats a worker and a request/reply protocol.
 async function aiTurn(r, seat) {
   const p = odds(seatView(seat), 500)[seatSuit[seat]];
+  const { action, want } = aiAction(p, r, purse, seat, read);
   await sleep(THINK);
-  return act(purse, r, seat, aiAction(p, r, purse, seat));
+  return act(purse, r, seat, action, want);
 }
 
 // Whose turn it is, and what the last seat did: without a marker and a line that
@@ -587,7 +608,11 @@ async function bettingRound(n, blinds = {}) {
   });
   for (let seat; (seat = actor(r));) {
     setTurn(seat);
+    // Taken before you act: `act` moves the chips, and the pressure that mattered was the
+    // pressure you decided under.
+    const stress = seat === 'you' ? stressIndex(r, purse, 'you') : 0;
     const m = seat === 'you' ? await askAction(r) : await aiTurn(r, seat);
+    if (seat === 'you') { remember(read, stress, m.action); saveRead(); }
     showAction(m);
     if (m.amount) logBet(m.seat, actionText(m));
     live = r.live;
@@ -681,6 +706,7 @@ function endRun() {
   // The run is over: drop the dead purse so a reload deals a fresh table instead of
   // restoring the same busted stacks and showing this screen again forever.
   dropPurse();
+  dropRead();
   pauseBtn.disabled = true;
   victoryTitleEl.textContent = broke ? 'You Lose' : 'You Win the Table';
   const gone = SEATS.filter(x => x !== 'you' && !left.includes(x)).map(x => SEAT_NAME[x]);
@@ -800,6 +826,7 @@ replayBtn.addEventListener('click', () => {
 });
 document.getElementById('quit-btn').addEventListener('click', () => {
   dropPurse();          // Continue rides the same stacks; Quit is the only way to reset them
+  dropRead();
   location.reload();
 });
 
