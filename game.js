@@ -464,18 +464,20 @@ function askAction(r) {
     const sizeable = hi > r.min && (opts.includes('bet') || opts.includes('raise'));
     // The Handicapper is opt-in, so only price the hand when it's switched on.
     const p = showOdds ? Math.round(odds(seatView('you'), 800)[playerSuit] * 100) + '% to win · ' : '';
+    // ponytail: a dock on the free right rail, not a fullscreen overlay. The board, the
+    // plaques and your hole cards in the deck panel all stay readable while you decide,
+    // so the panel only carries what is not already on screen: the street and the ask.
     const ov = document.createElement('div');
-    ov.className = 'paused-overlay';
-    ov.innerHTML = `<div class="paused-box"><span class="paused-title">Street ${r.street}</span>` +
-      `<div class="hole-cards">${handHTML(holes.you)}</div>` +
-      `<p class="paused-sub">${p}pot ${r.pot} · your stack ${purse.you}` +
+    ov.className = 'bet-dock';
+    ov.innerHTML = `<span class="bet-street">Street ${r.street}</span>` +
+      `<p class="bet-ask">${p}pot ${r.pot} · stack ${purse.you}` +
       `${owe ? ' · to call ' + owe : ''}</p>` +
       (sizeable ? `<label class="bet-size">Bet size <b class="bet-size-out">${r.min}</b>` +
         `<input type="range" min="${r.min}" max="${hi}" step="1" value="${r.min}" aria-label="Bet size">` +
         `</label>` : '') +
       `<div class="btn-row">` +
       opts.map(o => `<button class="btn-ghost" data-act="${o}">${label(o, r.min)}</button>`).join('') +
-      `</div></div>`;
+      `</div>`;
     screenRace.appendChild(ov);
     const slider = ov.querySelector('.bet-size input');
     slider?.addEventListener('input', () => {

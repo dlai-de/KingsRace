@@ -437,10 +437,30 @@ h1{
 }
 .paused-box{ display:flex; flex-direction:column; align-items:center; gap:22px; }
 .paused-sub{ margin:-10px 0 0; font-size:.9rem; color:var(--muted); }
+
+/* ---------- ACTION DOCK (your turn to bet -- right rail, table stays visible) ---------- */
+.bet-dock{
+  position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:45;
+  width:206px; padding:14px; border-radius:14px;
+  display:flex; flex-direction:column; gap:10px;
+  background:linear-gradient(160deg,rgba(14,61,43,.96),rgba(6,36,26,.96));
+  border:1px solid rgba(243,217,154,.55);
+  box-shadow:0 0 0 1px rgba(243,217,154,.18), 0 18px 40px rgba(0,0,0,.55);
+  animation:dockIn calc(.3s * var(--spd)) ease both;
+}
+@keyframes dockIn{ from{ opacity:0; transform:translate(16px,-50%); } to{ opacity:1; transform:translate(0,-50%); } }
+.bet-street{
+  font-family:'Card Characters','Cinzel',serif; font-size:.7rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold-bright);
+}
+.bet-ask{ margin:0; font-size:.72rem; line-height:1.45; color:var(--muted); }
+.bet-dock .btn-row{ flex-direction:column; align-items:stretch; gap:8px; margin:0; }
+.bet-dock .btn-row button{ min-width:0; padding:.55em .8em; font-size:.8rem; }
+.bet-dock .btn-row button:hover{ transform:translateY(-1px); }
 /* pick your own bet inside the street's limit */
-.bet-size{ display:flex; align-items:center; gap:12px; font-size:.85rem; color:var(--muted); letter-spacing:.03em; }
-.bet-size b{ min-width:2.2em; text-align:right; color:var(--gold-bright); font-size:1rem; }
-.bet-size input{ width:220px; accent-color:var(--gold); cursor:pointer; }
+.bet-size{ display:flex; flex-direction:column; gap:6px; font-size:.7rem; color:var(--muted); letter-spacing:.03em; }
+.bet-size b{ color:var(--gold-bright); font-size:.9rem; }
+.bet-size input{ width:100%; accent-color:var(--gold); cursor:pointer; }
 .paused-title{
   font-family:'Card Characters','Cinzel',serif; font-size:2.4rem; letter-spacing:.15em; color:var(--gold-bright);
   text-shadow:0 0 40px rgba(243,217,154,.5);
@@ -545,6 +565,14 @@ h1{
   .deck-panel{ width:110px; }
   .betlog{ left:6px; }
   .betlog li{ font-size:.62rem; padding:3px 7px; }
+  /* no room beside a portrait board: the dock drops to a bar above the corner buttons */
+  .bet-dock{
+    left:6px; right:6px; top:auto; bottom:78px; transform:none; width:auto;
+    flex-flow:row wrap; align-items:center; justify-content:center; gap:8px 12px;
+  }
+  .bet-dock .btn-row{ flex-direction:row; gap:8px; }
+  .bet-size{ flex-direction:row; align-items:center; gap:8px; flex:1 1 160px; }
+  @keyframes dockIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
   .rider-label{ font-size:.72rem; letter-spacing:.04em; }
   .chip{ width:11px; height:11px; margin-left:-4px; }
   .flip-container{ width:78px; height:112px; }

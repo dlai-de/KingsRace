@@ -22,7 +22,7 @@ From the victory screen, **Continue** deals the next hand with the stacks as the
 ## Features
 
 - Fully automatic race with a shuffle animation and a countdown.
-- **Vs Computer is a 4-handed poker table**: everyone gets 2 private hole cards — dead cards that never race, so they quietly slow their own suit — then a betting round before every bonus card is turned over, up to four — you bet blind on what that card will be, and set your own size on a slider, from one small bet up to the street's limit. Fold and your King races on, but it can no longer win the pot.
+- **Vs Computer is a 4-handed poker table**: everyone gets 2 private hole cards — dead cards that never race, so they quietly slow their own suit — then a betting round before every bonus card is turned over, up to four — you bet blind on what that card will be, and set your own size on a slider, from the minimum raise up to the street's limit or your whole stack. Fold and your King races on, but it can no longer win the pot. Go **all in** and you stay in the hand for what you could cover — you win from each rider only as much as you staked, and the rest of the pot goes to the next King home.
 - **Blinds, not an ante**: the two seats left of a rotating button post a small and big blind, so the opening round already has a live bet — you can fold before a card is drawn. The blinds climb every 2 minutes of play (5/10 → 10/20 → 20/40 → 40/80, and the bet sizes climb with them); the clock stops while the game is paused. A seat that can no longer cover the big blind is out.
 - Optional **Odds** readout: a Monte Carlo win chance per King, priced from what you alone can see.
 - Pause/Resume at any time; the in-game rules panel (bottom-right) pauses the race automatically while open.
