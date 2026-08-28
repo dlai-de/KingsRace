@@ -140,6 +140,7 @@
         <span class="pile-label">Discard</span>
       </div>
       <div id="deck-counter" class="deck-counter">44 cards left</div>
+      <button id="odds-btn" class="pause-btn btn-ghost" title="Monte Carlo win chance for each King">Odds</button>
     </aside>
 
     <div class="board-wrap">
@@ -192,11 +193,14 @@
       <li>An Ace there sends that King one row further.</li>
       <li>A Joker sends both same-colored Kings back a row.</li>
       <li>First King to reach the top row wins!</li>
+      <li>If the deck runs out, the King furthest ahead takes it — photo finish.</li>
+      <li>Hit <b>Odds</b> to see each King’s live win chance.</li>
     </ul>
     <button id="rules-close" class="pause-btn">Close</button>
   </div>
 </div>
 
+<script src="race.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

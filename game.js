@@ -1,24 +1,14 @@
 'use strict';
 
 // ---------- Constants ----------
-const SUITS = ['S', 'D', 'C', 'H'];
+// SUITS, SUIT_COLOR, RANKS, ROWS and the rules themselves come from race.js.
 const SUIT_SYMBOL = { S: '♠', D: '♦', C: '♣', H: '♥' };
 const SUIT_GLYPH = { S: '}', D: '[', C: ']', H: '{' }; // pip glyphs in the "Card Characters" font
 const SUIT_NAME = { S: 'Spades', D: 'Diamonds', C: 'Clubs', H: 'Hearts' };
-const SUIT_COLOR = { S: 'black', D: 'red', C: 'black', H: 'red' };
 const SUIT_COL = { S: 0, D: 1, C: 2, H: 3 };
-const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q'];
-const ROWS = 8, COLS = 5;
+const COLS = 5;
 const COLW = 100 / COLS, ROWH = 100 / ROWS, PAD = 0.6;
 const ROWSTEP = ROWH / (ROWH - 2 * PAD) * 100; // one row, in % of a token's own height
-
-const shuffle = arr => {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = (Math.random() * (i + 1)) | 0;
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-};
 
 // ---------- DOM references ----------
 const screenMode = document.getElementById('screen-mode');
@@ -41,6 +31,7 @@ const victoryWinnerEl = document.getElementById('victory-winner');
 const victoryTitleEl = document.getElementById('victory-title');
 const victorySubtitleEl = document.getElementById('victory-subtitle');
 const pauseBtn = document.getElementById('pause-btn');
+const oddsBtn = document.getElementById('odds-btn');
 
 // ---------- Pausable delay ----------
 let paused = false, pauseResolve = null;
@@ -70,22 +61,12 @@ function resumeGame() {
 pauseBtn.addEventListener('click', pauseGame);
 
 // ---------- Game state ----------
-let mainDeck, bonusRow, kingPos, revealed, deckIdx;
+let race;                                 // the pure race state from race.js
 let mode, playerSuit, computerSuit, riderNames = {}, gameOver;
 let kingEls = {}, bonusEls = {};
 
 function newGame() {
-  mainDeck = shuffle(SUITS.flatMap(suit => RANKS.map(rank => ({ suit, rank }))));
-  const bonusCards = shuffle([
-    ...SUITS.map(suit => ({ type: 'ace', suit })),
-    { type: 'joker', color: 'red' },
-    { type: 'joker', color: 'black' },
-  ]);
-  bonusRow = {};
-  bonusCards.forEach((c, i) => { bonusRow[i + 1] = c; });
-  kingPos = { S: 7, D: 7, C: 7, H: 7 };
-  revealed = new Set();
-  deckIdx = 0;
+  race = newRaceState();
   gameOver = false;
   paused = false;
   pauseBtn.disabled = false;
@@ -150,7 +131,7 @@ function renderTokens() {
       el.classList.add('player');
     }
     el.innerHTML = cardInnerHTML('K', SUIT_GLYPH[suit], SUIT_COLOR[suit]);
-    positionToken(el, kingPos[suit], SUIT_COL[suit]);
+    positionToken(el, race.kingPos[suit], SUIT_COL[suit]);
     el.style.animationDelay = (i * 120) + 'ms';
     tokensLayer.appendChild(el);
     kingEls[suit] = el;
@@ -173,8 +154,7 @@ function renderTokens() {
 }
 
 function moveKing(suit, row) {
-  kingPos[suit] = row;
-  setRow(kingEls[suit], row);
+  setRow(kingEls[suit], row);   // race.js already moved the King; this just draws it
 }
 
 function revealBonusCard(row, card) {
@@ -210,79 +190,81 @@ function logEvent(msg) {
   timelineEl.scrollTop = timelineEl.scrollHeight;
 }
 function updateDeckCounter() {
-  deckCounterEl.textContent = `${mainDeck.length - deckIdx} cards left`;
-  const remFrac = (mainDeck.length - deckIdx) / mainDeck.length;
-  const playedFrac = deckIdx / mainDeck.length;
+  deckCounterEl.textContent = `${race.mainDeck.length - race.deckIdx} cards left`;
+  const remFrac = (race.mainDeck.length - race.deckIdx) / race.mainDeck.length;
+  const playedFrac = race.deckIdx / race.mainDeck.length;
   deckStackEl.style.setProperty('--th', (1 + remFrac * 5) + 'px');
   deckStackEl.style.opacity = remFrac > 0 ? 1 : .3;
   discardStackEl.style.setProperty('--th', (1 + playedFrac * 5) + 'px');
   discardStackEl.style.opacity = playedFrac > 0 ? Math.min(1, .35 + playedFrac * .75) : 0;
 }
 
-// ---------- Game logic ----------
-async function advanceKing(suit) {
-  if (gameOver || kingPos[suit] === 0) return;
-  const newRow = kingPos[suit] - 1;
-  moveKing(suit, newRow);
-  logEvent(`${SUIT_SYMBOL[suit]} ${SUIT_NAME[suit]} King advances!`);
-  await sleep(680);
-  if (newRow === 0) { await win(suit); return; }
-  await checkCheckpoints();
-}
-
-async function checkCheckpoints() {
-  for (let r = 6; r >= 1; r--) {
-    if (gameOver) return;
-    if (revealed.has(r)) continue;
-    if (SUITS.every(s => kingPos[s] < r)) {
-      revealed.add(r);
-      const card = bonusRow[r];
-      revealBonusCard(r, card);
-      logEvent(`Row ${r} cleared — bonus revealed!`);
+// ---------- Rendering the race ----------
+// race.js decides what happens; everything below only shows it.
+async function renderEvent(e) {
+  switch (e.type) {
+    case 'draw':
+      hideCurrentCard();
+      await sleep(450);
+      updateDeckCounter();
+      showCurrentCard(e.card);
+      await sleep(600);
+      logEvent(`\u{1F0A0} ${e.card.rank} of ${SUIT_NAME[e.card.suit]} turned`);
+      await sleep(650);
+      break;
+    case 'advance':
+      moveKing(e.suit, e.row);
+      logEvent(`${SUIT_SYMBOL[e.suit]} ${SUIT_NAME[e.suit]} King advances!`);
+      await sleep(680);
+      break;
+    case 'reveal':
+      revealBonusCard(e.row, e.card);
+      logEvent(`Row ${e.row} cleared \u2014 bonus revealed!`);
       await sleep(750);
-      if (card.type === 'ace') {
-        logEvent(`${SUIT_SYMBOL[card.suit]} Ace of ${SUIT_NAME[card.suit]}!`);
-        await sleep(450);
-        await advanceKing(card.suit);
-      } else {
-        const affected = SUITS.filter(s => SUIT_COLOR[s] === card.color);
-        logEvent(`🃏 ${card.color === 'red' ? 'Red' : 'Black'} Joker!`);
-        await sleep(450);
-        logEvent(`${affected.map(s => SUIT_NAME[s]).join(' & ')} fall back.`);
-        affected.forEach(s => moveKing(s, Math.min(7, kingPos[s] + 1)));
-        await sleep(680);
+      break;
+    case 'ace':
+      logEvent(`${SUIT_SYMBOL[e.suit]} Ace of ${SUIT_NAME[e.suit]}!`);
+      await sleep(450);
+      break;
+    case 'joker':
+      logEvent(`\u{1F0CF} ${e.color === 'red' ? 'Red' : 'Black'} Joker!`);
+      await sleep(450);
+      logEvent(`${e.suits.map(x => SUIT_NAME[x]).join(' & ')} fall back.`);
+      e.suits.forEach((x, i) => moveKing(x, e.rows[i]));
+      await sleep(680);
+      break;
+    case 'win':
+      if (e.photoFinish) {
+        logEvent('The deck ran out \u2014 photo finish!');
+        await sleep(650);
       }
-    }
+      await win(e.suit, e.photoFinish);
+      break;
   }
 }
 
 async function gameLoop() {
-  while (!gameOver && deckIdx < mainDeck.length) {
-    hideCurrentCard();
-    await sleep(450);
-    if (gameOver) break;
-    const card = mainDeck[deckIdx++];
-    updateDeckCounter();
-    showCurrentCard(card);
-    await sleep(600);
-    logEvent(`🂠 ${card.rank} of ${SUIT_NAME[card.suit]} turned`);
-    await sleep(650);
-    if (gameOver) break;
-    await advanceKing(card.suit);
+  updateOdds();
+  while (!gameOver) {
+    for (const e of stepRace(race)) {
+      if (gameOver) return;
+      await renderEvent(e);
+    }
+    updateOdds();
     await sleep(250);
   }
 }
 
-async function win(suit) {
+async function win(suit, photoFinish) {
   gameOver = true;
   pauseBtn.disabled = true;
   kingEls[suit].classList.add('winner');
   logEvent(`${SUIT_NAME[suit]} King wins the race!`);
   await sleep(1000);
-  showVictory(suit);
+  showVictory(suit, photoFinish);
 }
 
-function showVictory(suit) {
+function showVictory(suit, photoFinish) {
   kingEls[suit].classList.remove('winner');
   victoryWinnerEl.innerHTML = `<div class="pc-front ${SUIT_COLOR[suit]}">${cardInnerHTML('K', SUIT_GLYPH[suit], SUIT_COLOR[suit])}</div>`;
   if (mode === 'computer') {
@@ -306,6 +288,10 @@ function showVictory(suit) {
       victorySubtitleEl.textContent = `No rider claimed this King, but it still won the race!`;
     }
   }
+  if (photoFinish) {
+    victorySubtitleEl.textContent =
+      `The deck ran out \u2014 the ${SUIT_NAME[suit]} King was furthest ahead. Photo finish!`;
+  }
   screenVictory.classList.remove('hidden');
 }
 
@@ -326,9 +312,28 @@ function setRiderLabels() {
     const label = mode === 'computer'
       ? (suit === playerSuit ? 'YOU' : suit === computerSuit ? 'PC' : '')
       : (riderNames[suit] || '');
-    document.getElementById('label-' + suit).textContent = label;
+    const el = document.getElementById('label-' + suit);
+    el.textContent = label;
+    el.appendChild(document.createElement('i')).className = 'odds';
   });
 }
+
+// ---------- Handicapper ----------
+// Monte Carlo win% under each rider, off by default.
+let showOdds = false;
+function updateOdds() {
+  const p = showOdds && !gameOver ? odds(race) : null;
+  SUITS.forEach(suit => {
+    const el = document.querySelector('#label-' + suit + ' .odds');
+    if (el) el.textContent = p ? Math.round(p[suit] * 100) + '%' : '';
+  });
+}
+oddsBtn.addEventListener('click', () => {
+  showOdds = !showOdds;
+  oddsBtn.classList.toggle('on', showOdds);
+  oddsBtn.textContent = showOdds ? 'Odds: On' : 'Odds';
+  updateOdds();
+});
 
 async function startRace() {
   screenSelect.classList.add('hidden');

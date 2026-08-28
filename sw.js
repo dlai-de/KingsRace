@@ -1,10 +1,11 @@
 'use strict';
 
-const CACHE_NAME = 'kings-race-v2';
+const CACHE_NAME = 'kings-race-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './style.css',
+  './race.js',
   './game.js',
   './manifest.webmanifest',
   './assets/fonts/Card%20Characters/CARDC___.TTF',

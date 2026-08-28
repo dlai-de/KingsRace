@@ -220,6 +220,12 @@ h1{
 .flip-container .face.pc-front{ transform:rotateY(180deg); }
 
 .deck-counter{ font-size:.8rem; color:var(--muted); letter-spacing:.03em; }
+#odds-btn{ padding:.4em .9em; font-size:.75rem; }
+#odds-btn.on{ color:var(--felt-2); background:linear-gradient(160deg,var(--gold-bright),var(--gold)); border-color:transparent; }
+.rider-label .odds{
+  display:block; font-family:'Poppins',sans-serif; font-style:normal;
+  font-size:.7rem; font-weight:500; letter-spacing:0; color:var(--muted);
+}
 
 /* ---------- Bicycle-style playing cards (shared) ---------- */
 .pc-back{
