@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'kings-race-v6';
+const CACHE_NAME = 'kings-race-v7';
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,6 +9,8 @@ const APP_SHELL = [
   './odds-worker.js',
   './bets.js',
   './game.js',
+  './faces.js',
+  './faces.css',
   './manifest.webmanifest',
   './assets/fonts/Card%20Characters/CARDC___.TTF',
   './assets/images/black_king.png',
@@ -45,6 +47,19 @@ self.addEventListener('fetch', event => {
 
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request).catch(() => caches.match('./index.html')));
+    return;
+  }
+
+  // ponytail: code goes network-first so a deploy can't be masked by a stale cache;
+  // images/fonts stay cache-first. Bumping CACHE_NAME by hand was the old, forgettable way.
+  if (/\.(js|css|html)$/.test(new URL(event.request.url).pathname)) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
     return;
   }
 
