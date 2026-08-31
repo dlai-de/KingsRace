@@ -17,6 +17,9 @@ const screenVictory = document.getElementById('screen-victory');
 const selectSubtitleEl = document.getElementById('select-subtitle');
 const startFriendsBtn = document.getElementById('start-friends-btn');
 const setupWarningEl = document.getElementById('setup-warning');
+const buyinPickEl = document.getElementById('buyin-pick');
+const buyinEl = document.getElementById('buyin');
+buyinEl.innerHTML = BUYINS.map(n => `<option${n === BUYIN ? ' selected' : ''}>${n}</option>`).join('');
 const cellsLayer = document.getElementById('cells');
 const tokensLayer = document.getElementById('tokens');
 const deckCounterEl = document.getElementById('deck-counter');
@@ -202,7 +205,8 @@ function updateDeckCounter() {
   deckStackEl.style.setProperty('--th', (1 + remFrac * 5) + 'px');
   deckStackEl.style.opacity = remFrac > 0 ? 1 : .3;
   discardStackEl.style.setProperty('--th', (1 + playedFrac * 5) + 'px');
-  discardStackEl.style.opacity = playedFrac > 0 ? Math.min(1, .35 + playedFrac * .75) : 0;
+  // the whole pile, label included -- a "Discard" caption over an invisible stack reads as a hole
+  discardStackEl.parentElement.style.opacity = playedFrac > 0 ? Math.min(1, .35 + playedFrac * .75) : 0;
 }
 
 // ---------- Rendering the race ----------
@@ -395,8 +399,8 @@ function dropRead() {
 // restore the old purse and then start the "new" game on it.
 // ponytail: clockStarted is deliberately left alone -- it only guards against a second
 // setInterval, and the one already running reads purse.ms, which is now zero again.
-function resetPurse() {
-  Object.assign(purse, loadPurse(null));
+function resetPurse(buyin) {
+  Object.assign(purse, loadPurse(null, buyin));
   commit = { ...purse };
   handStart = {};
   dropRead();
@@ -753,6 +757,7 @@ async function startRace() {
 }
 
 function chooseKing(suit) {
+  resetPurse(+buyinEl.value);
   playerSuit = suit;
   assignSeats();
   newGame();
@@ -761,8 +766,6 @@ function chooseKing(suit) {
 
 function chooseMode(m) {
   mode = m;
-  resetPurse();   // both chooseKing and startFriendsRace are only reachable through here
-
   screenMode.classList.add('hidden');
   screenSelect.classList.remove('hidden');
   const nameInputs = document.querySelectorAll('.name-input');
@@ -771,10 +774,12 @@ function chooseMode(m) {
     selectSubtitleEl.textContent = 'Choose your King. Three AI riders take the other three.';
     nameInputs.forEach(i => { i.classList.add('hidden'); i.value = ''; });
     startFriendsBtn.classList.add('hidden');
+    buyinPickEl.classList.remove('hidden');
   } else {
     selectSubtitleEl.textContent = 'Give up to 4 riders a name, then start the race.';
     nameInputs.forEach(i => i.classList.remove('hidden'));
     startFriendsBtn.classList.remove('hidden');
+    buyinPickEl.classList.add('hidden');   // friends mode plays for no chips
   }
 }
 
@@ -806,6 +811,7 @@ function startFriendsRace() {
     return;
   }
   riderNames = names;
+  resetPurse();   // friends play for no chips, but the table still opens level
   newGame();
   startRace();
 }

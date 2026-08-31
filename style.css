@@ -114,6 +114,17 @@ h1{
 .name-input::placeholder{ color:var(--muted); }
 .name-input:focus{ outline:none; border-color:var(--gold-bright); }
 .setup-warning{ color:#ff8b7a; font-size:.9rem; margin:.4em 0 0; }
+.buyin-pick{
+  display:flex; align-items:center; gap:.7em; margin-top:1.8em;
+  font-family:'Card Characters','Cinzel',serif; font-size:.95rem; letter-spacing:.1em; color:var(--gold-bright);
+}
+.buyin-pick select{
+  font:inherit; letter-spacing:.06em; color:var(--ink); cursor:pointer;
+  padding:.4em .6em; border-radius:8px;
+  border:1px solid rgba(212,175,106,.4); background:rgba(255,255,255,.06);
+}
+.buyin-pick select:focus{ outline:none; border-color:var(--gold-bright); }
+.buyin-pick option{ background:var(--felt-2); }   /* the popup is the browser's; give it the felt */
 #screen-select .btn-row{ margin-top:2.4em; }
 
 /* ---------- RACE SCREEN (single-page layout) ---------- */
@@ -226,8 +237,11 @@ h1{
 }
 .rider-label .stake{
   display:block; font-family:'Poppins',sans-serif; font-style:normal;
-  font-size:.65rem; font-weight:500; letter-spacing:0; color:var(--gold); opacity:.85;
+  font-size:.76em; font-weight:500; letter-spacing:0; color:var(--gold); opacity:.85;
 }
+/* One line each. .board-wrap reserves a fixed strip for these plaques, so a second
+   line here is a plaque hanging off the bottom of the viewport (body is overflow:hidden). */
+.rider-label .stake, .rider-label .said{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* your hole cards -- in the deck panel */
 /* fanned like a held hand: fixed footprint, so the 3rd-5th card slot in without
@@ -328,7 +342,13 @@ h1{
 .rider-label{
   position:absolute; top:100%; margin-top:10px; width:19%; box-sizing:border-box;
   padding:5px 3px 7px; text-align:center;
-  font-family:'Card Characters','Cinzel',serif; font-size:.85rem; font-weight:700; letter-spacing:.1em;
+  font-family:'Card Characters','Cinzel',serif; font-weight:700; letter-spacing:.1em;
+  /* A plaque is 19% of the board, and on a short screen that is barely 48px -- fixed type
+     and 14px chips spill straight out of it. cq units are .board-wrap's (the board itself
+     must not be a container: its own height formula reads them), and the board's width is
+     min(100cqh * 10/16, 100cqw), so this is 4.4% of the board at any size. Everything
+     inside the plaque is em, so it all follows. */
+  font-size:clamp(.55rem, min(4.4cqw, 2.75cqh), .85rem);
   color:var(--gold-bright); opacity:.9; pointer-events:none;
   background:linear-gradient(180deg, rgba(212,175,106,.14), rgba(0,0,0,.3));
   border:1px solid rgba(212,175,106,.3);
@@ -338,10 +358,10 @@ h1{
   border-color:rgba(243,217,154,.75);
   box-shadow:0 0 0 1px rgba(243,217,154,.35), 0 6px 16px rgba(243,217,154,.18);
 }
-.rider-label .tag{ display:block; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rider-label .tag{ display:block; font:inherit; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .rider-label .said{
   display:block; font-family:'Poppins',sans-serif; font-style:normal; font-weight:600;
-  font-size:.62rem; letter-spacing:.02em; color:var(--gold-bright); min-height:.95em;
+  font-size:.73em; letter-spacing:.02em; color:var(--gold-bright); min-height:.95em;
 }
 .rider-label .said.fold{ color:var(--muted); font-weight:400; }
 /* whose turn it is -- the plaque lifts off the rail while the seat decides */
@@ -369,7 +389,14 @@ h1{
 #label-H{ left:60.5%; transform:translateY(0)    rotate(-10deg); }
 
 /* ---------- chips committed this hand ---------- */
-.rider-label .chips{ display:flex; justify-content:center; align-items:center; height:15px; }
+/* A plaque is ~4.3em wide (19% of the board over a 4.4% font), ~3.6em inside its padding.
+   Six committed discs and four stack piles have to fit in that, at every board size. */
+.rider-label .chips{ display:flex; justify-content:center; align-items:center; height:.9em; }
+.rider-label .chip{ width:.78em; height:.78em; margin-left:-.3em; }
+.rider-label .chip:first-child{ margin-left:0; }
+.rider-label .stack{ height:1.35em; gap:.1em; }
+.rider-label .stack .chip{ margin:-.62em 0 0; }
+.rider-label .stack .chip:last-child{ margin-top:0; }
 .chip{
   width:14px; height:14px; border-radius:50%; flex:0 0 auto; margin-left:-5px;
   background:
@@ -502,9 +529,6 @@ h1{
 #victory-chips:empty{ display:none; }   /* friends mode plays for no chips */
 
 .pick-card .big-pip{ font-size:1rem; }
-#victory-title{ font-family:'Card Characters','Cinzel',serif; color:var(--gold-bright); margin:.3em 0 .2em; font-size:1.9rem; }
-#victory-subtitle{ opacity:.85; font-size:1rem; max-width:340px; }
-#victory-chips{ margin-top:.8em; font-size:.9rem; color:var(--gold-bright); }
 .btn-row{ display:flex; justify-content:center; align-items:center; gap:14px; margin-top:1.4em; }
 .btn-row button{
   min-width:150px; padding:.7em 1.2em; font-size:.95rem; font-weight:600;
@@ -669,10 +693,8 @@ h1{
   /* the casino arc needs width the phone board has not got -- sit the seats straight */
   #label-S, #label-D, #label-C, #label-H{ transform:none; }
   .rider-label{ padding:3px 1px 5px; font-size:.6rem; letter-spacing:0; }
-  /* one line each, so the plaque height stays inside the strip reserved above */
-  .rider-label .stake, .rider-label .said{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .rider-label .said, .rider-label .stake{ font-size:.52rem; }
-  .rider-label .seat-face{ width:24px; height:24px; margin-bottom:2px; }
+  .rider-label .seat-face{ width:2.4em; height:2.4em; margin-bottom:2px; }
   .chip{ width:9px; height:9px; margin-left:-3px; }
   .stack{ height:15px; }
   .stack .chip{ margin:-6px 0 0; }

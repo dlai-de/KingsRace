@@ -3,7 +3,7 @@
    heavier selector (see the phone block's `.rider-label .seat-face`). */
 
 .seat-face{
-  display:block; width:34px; height:34px; margin:0 auto 3px;
+  display:block; width:2.5em; height:2.5em; margin:0 auto 3px;   /* em: follows .rider-label, which scales with the board */
   border-radius:50%; overflow:hidden;
   border:1px solid rgba(212,175,106,.5);
   background:

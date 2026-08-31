@@ -131,7 +131,7 @@ console.assert(odds(nearly, 2000).H > 0.6, 'leader is not favoured');
 }
 
 // ---------- bets.js fixed-limit betting ----------
-const { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, STREET_GAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot }
+const { BUYIN, BUYINS, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, STREET_GAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot }
   = require('./bets.js');
 
 const BB = BLINDS[0], SB = BB / 2;
@@ -150,6 +150,20 @@ const total = (purse, pot = 0) => SEATS.reduce((a, s) => a + purse[s], 0) + purs
   // against BUYIN so the fixture keeps summing to the stake whatever the buy-in is.
   const mid = { ...fresh, you: BUYIN - 60, a1: BUYIN + 20, a2: BUYIN, a3: BUYIN, carry: 40, hand: 7 };
   console.assert(total(loadPurse(mid)) === STAKE && loadPurse(mid).hand === 7, 'a good purse did not restore');
+
+  // The buy-in is the picker's, and the stake follows it: a table dealt at 100 checks
+  // against 400, and a 1000-chip blob cannot restore onto it -- nor can an edited `buyin`
+  // set a stake of its own choosing.
+  BUYINS.forEach(n => {
+    const table = loadPurse(null, n);
+    console.assert(total(table) === SEATS.length * n && table.buyin === n, 'a ' + n + ' table is not staked at ' + SEATS.length * n);
+    console.assert(total(loadPurse(purseBlob(table, table), n)) === SEATS.length * n, 'a ' + n + ' table did not restore');
+    // A blob claiming a buy-in its own chips do not add up to is not a table.
+    console.assert(total(loadPurse({ ...table, buyin: 1000 }, n)) === SEATS.length * n && loadPurse({ ...table, buyin: 1000 }, n).buyin === n,
+      'a blob claiming the wrong buy-in restored onto a ' + n + ' table');
+  });
+  console.assert(loadPurse(null, 12345).buyin === BUYIN, 'an off-menu buy-in dealt a table');
+  console.assert(loadPurse({ ...mid, buyin: 4 }).buyin === BUYIN, 'an edited buy-in set its own stake');
 
   // The shapes that used to leak through: an older two-seat blob, and a tampered total.
   [{ you: 40, ai: 160, carry: 0 }, { ...mid, a1: 999 }, { ...mid, you: -5 }, { ...mid, you: 40.5 }, 'junk', null]

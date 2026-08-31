@@ -3,7 +3,8 @@
 // Pure chip math: bankrolls, the blinds, and one fixed-limit betting round. No DOM, no
 // storage, no odds -- game.js does the IO and race.js does the probability.
 
-const BUYIN = 1000;
+const BUYIN = 1000;                        // the default table
+const BUYINS = [100, 500, 750, 1000];      // what the picker offers; also the only values a saved purse may claim
 // Blind ladder: the big blind at each level, small blind is half. The big blind is also
 // the fixed-limit small bet (streets 1-2; the big bet is 2x on streets 3-4), so raising
 // the blinds raises the whole betting structure with it.
@@ -40,15 +41,22 @@ const levelLeft = ms => blindLevel(ms) === BLINDS.length - 1 ? Infinity : LEVEL_
 // `ms` is the blind clock and `bb` the level frozen for the hand in progress; neither is
 // a chip, so neither counts towards the stake. `bb` is not restored -- the next hand
 // stamps it fresh from the clock.
-const STAKE = SEATS.length * BUYIN;
-function loadPurse(saved) {
-  const fresh = { carry: 0, hand: 0, ms: 0, bb: BLINDS[0], ...Object.fromEntries(SEATS.map(s => [s, BUYIN])) };
+// The stake a table is played for is its own buy-in times the seats, so `buyin` rides in
+// the purse: a 100-chip table and a 1000-chip one each check against the right total, and
+// a blob from one can never restore onto the other.
+const STAKE = SEATS.length * BUYIN;        // the default table's stake
+function loadPurse(saved, buyin = BUYIN) {
+  if (!BUYINS.includes(buyin)) buyin = BUYIN;
+  const fresh = { carry: 0, hand: 0, ms: 0, bb: BLINDS[0], buyin, ...Object.fromEntries(SEATS.map(s => [s, buyin])) };
   const chips = k => Number.isInteger(saved?.[k]) && saved[k] >= 0;
   if (![...SEATS, 'carry'].every(chips)) return fresh;
   const p = { ...fresh };
   ['hand', 'ms'].forEach(k => { if (chips(k)) p[k] = saved[k]; });
+  // A stored table keeps the buy-in it was dealt at -- but only one the picker could have
+  // dealt, or an edited blob would set its own stake and pass any check it likes.
+  if (BUYINS.includes(saved.buyin)) p.buyin = saved.buyin;
   [...SEATS, 'carry'].forEach(k => { p[k] = saved[k]; });
-  return SEATS.reduce((a, s) => a + p[s], 0) + p.carry === STAKE ? p : fresh;
+  return SEATS.reduce((a, s) => a + p[s], 0) + p.carry === SEATS.length * p.buyin ? p : fresh;
 }
 
 // What actually goes to storage: chips from a hand boundary, the clock from right now.
@@ -327,5 +335,5 @@ const chipSplit = n => CHIPS.flatMap(v => {
 });
 
 if (typeof module !== 'undefined') {
-  module.exports = { BUYIN, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, STREET_GAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot, chipSplit };
+  module.exports = { BUYIN, BUYINS, BLINDS, LEVEL_MS, bigBlind, levelLeft, CAP, STREET_GAP, SEATS, STAKE, loadPurse, purseBlob, alive, openPot, newRound, actor, legal, act, aiAction, aiSize, stressIndex, newRead, loadRead, remember, foldRate, awardPot, chipSplit };
 }
