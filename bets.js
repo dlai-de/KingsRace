@@ -3,7 +3,7 @@
 // Pure chip math: bankrolls, the blinds, and one fixed-limit betting round. No DOM, no
 // storage, no odds -- game.js does the IO and race.js does the probability.
 
-const BUYIN = 100;
+const BUYIN = 1000;
 // Blind ladder: the big blind at each level, small blind is half. The big blind is also
 // the fixed-limit small bet (streets 1-2; the big bet is 2x on streets 3-4), so raising
 // the blinds raises the whole betting structure with it.

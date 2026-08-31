@@ -146,7 +146,9 @@ const total = (purse, pot = 0) => SEATS.reduce((a, s) => a + purse[s], 0) + purs
   console.assert(new Set(SEATS.map(s => fresh[s])).size === 1, 'seats did not start level');
   console.assert(total(fresh) === STAKE, 'a fresh table is not staked at ' + STAKE);
 
-  const mid = { ...fresh, you: 40, a1: 120, a2: 100, a3: 100, carry: 40, hand: 7 };
+  // Off a level table: chips moved between two seats with a pot still riding. Written
+  // against BUYIN so the fixture keeps summing to the stake whatever the buy-in is.
+  const mid = { ...fresh, you: BUYIN - 60, a1: BUYIN + 20, a2: BUYIN, a3: BUYIN, carry: 40, hand: 7 };
   console.assert(total(loadPurse(mid)) === STAKE && loadPurse(mid).hand === 7, 'a good purse did not restore');
 
   // The shapes that used to leak through: an older two-seat blob, and a tampered total.
